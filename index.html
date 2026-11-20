@@ -37,6 +37,9 @@ h2{font-size:1.35rem}
 .notice{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin:16px 0;box-shadow:var(--shadow)}
 .notice p{margin:4px 0}
 .notice .small{font-size:.88rem;color:var(--ink2)}
+/* 編輯已存模型時的橫幅：讓「現在在編輯」這件事一眼看得見，不會再回去按卡片上的編輯 */
+#editBanner{border-color:var(--accent);background:var(--accent-soft);margin:0 0 16px;box-shadow:none}
+#editBanner p{margin:2px 0}
 section.block{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:18px;margin:18px 0;box-shadow:var(--shadow)}
 .sec-head{display:flex;flex-wrap:wrap;align-items:baseline;gap:8px 14px;margin-bottom:6px}
 .sec-head .hint{color:var(--ink2);font-size:.9rem}
@@ -275,6 +278,11 @@ hr.sep{border:none;border-top:1px solid var(--line);margin:16px 0}
         <p id="pwSetupErr" class="err-text" style="min-height:1.3em"></p>
         <button class="btn primary" id="pwSetBtn">設定密碼</button>
       </div>
+    </div>
+
+    <div id="editBanner" class="notice" style="display:none">
+      <p><strong>正在編輯已儲存的模型</strong></p>
+      <p class="small" id="editBannerText"></p>
     </div>
 
     <div class="form-grid">
@@ -683,8 +691,13 @@ function startEditModel(id){
   $("mKey").placeholder="留空＝沿用原本的金鑰（"+maskKey(m.apiKey)+"）";
   $("mSaveBtn").textContent="儲存變更";
   $("mCancelEditBtn").style.display="inline-flex";
-  $("mFormMsg").innerHTML="<span class='warn-text'>正在編輯「"+esc(vendorLabel(m)+"・"+m.modelName)+"」：改完按「儲存變更」，要改型號直接在上面換模型就好。</span>";
-  $("secModels").scrollIntoView({behavior:"smooth"});
+  $("mFormMsg").textContent="";
+  $("editBannerText").textContent="「"+vendorLabel(m)+"・"+m.modelName+"」——要換型號直接改上面的「模型」那一欄，其他欄位不用動；改完按「儲存變更」。不想改就按「取消編輯」。";
+  $("editBanner").style.display="block";
+  /* 卡片要重畫：剛編輯的那張會變成「編輯中」並鎖住，避免使用者以為沒反應又按一次、又被問一次密碼 */
+  renderModels();
+  $("editBanner").scrollIntoView({behavior:"smooth",block:"center"});
+  toast("已進入編輯模式，改完按「儲存變更」。");
 }
 function endEditModel(){
   editingModelId=null;
@@ -692,9 +705,11 @@ function endEditModel(){
   $("mKey").placeholder="貼上你的 API KEY";
   $("mSaveBtn").textContent="儲存這組模型";
   $("mCancelEditBtn").style.display="none";
+  $("editBanner").style.display="none";
 }
 $("mCancelEditBtn").addEventListener("click", function(){
   endEditModel();
+  renderModels();
   $("mFormMsg").textContent="已取消編輯，表單沒有變更。";
 });
 $("mSaveBtn").addEventListener("click", function(){
@@ -761,6 +776,12 @@ function renderModels(){
       b.addEventListener("click", function(){
         var act=b.getAttribute("data-act");
         if(act==="edit"){
+          /* 已經在編輯這一組：只是把畫面帶回表單，不要再問一次密碼（不然會像卡在迴圈裡） */
+          if(editingModelId===m.id){
+            $("editBanner").scrollIntoView({behavior:"smooth",block:"center"});
+            toast("這一組正在編輯中，直接改上面的表單就好。");
+            return;
+          }
           requirePassword("修改模型「"+m.modelName+"」的設定", function(){ startEditModel(m.id); });
         } else if(act==="use"){
           requirePassword("切換使用中的模型為「"+m.modelName+"」", function(){
