@@ -289,6 +289,10 @@ hr.sep{border:none;border-top:1px solid var(--line);margin:16px 0}
       <div><label class="fl" for="mVendor">廠商</label><select id="mVendor"></select></div>
       <div><label class="fl" for="mModel">模型</label><select id="mModel"></select>
         <input type="text" id="mModelText" placeholder="輸入模型名稱" style="display:none;margin-top:6px" /></div>
+      <div class="full" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+        <button class="btn small" id="mRefreshBtn">重新整理模型清單</button>
+        <span class="kv" id="mListNote"></span>
+      </div>
       <div class="full"><p class="kv" id="mModelInfo" style="margin:2px 0 0"></p></div>
       <div class="full"><label class="fl" for="mEndpoint">接口地址（依模型自動帶入，可手動改）</label><input type="url" id="mEndpoint" /></div>
       <div id="mAccountWrap" style="display:none"><label class="fl" for="mAccount">Cloudflare Account ID</label><input type="text" id="mAccount" placeholder="Cloudflare 帳號 ID" /></div>
@@ -538,8 +542,8 @@ function modelOf(id){ return state.models.find(function(m){return m.id===id;})||
 function maskKey(k){ if(!k) return ""; return "••••••••"+String(k).slice(-4); }
 function vendorLabel(m){ if(m.vendor==="custom") return m.customVendor||"自訂廠商"; var p=PROVIDERS[m.vendor]; return p?p.label:m.vendor; }
 function findModelMeta(m){
-  var p=PROVIDERS[m.vendor]; if(!p) return null;
-  return p.models.find(function(x){return x.id===m.modelId;})||null;
+  if(!PROVIDERS[m.vendor]) return null;
+  return modelMetaList(m.vendor).find(function(x){return x.id===m.modelId;})||null;
 }
 function modelCanTryOn(m){ var meta=findModelMeta(m); if(m.vendor==="custom") return true; return meta?meta.can:false; }
 function modelPrice(m){ var meta=findModelMeta(m); return meta?meta.price:(m.price||""); }
@@ -618,6 +622,159 @@ $("lockResetBtn").addEventListener("click", function(){
   toast("已重置：模型設定與密碼已清除。");
 });
 
+/* ============ 模型清單：內建精選 ＋ 廠商 API 即時查詢 ============ */
+/* 各家能不能從瀏覽器直接問到模型清單差很多（2026-11-20 實測）：
+   OpenRouter、Pollinations 公開可查；Gemini、OpenAI 要帶金鑰；
+   Cloudflare 要經自建 Worker；fal、Replicate、智譜、Meta 從瀏覽器查不到，只能用內建精選。 */
+var LS_MCACHE="tryonStatic.modelCache.v1";
+var MODEL_CACHE={};
+function loadModelCache(){
+  try{ MODEL_CACHE=JSON.parse(localStorage.getItem(LS_MCACHE)||"{}")||{}; }catch(e){ MODEL_CACHE={}; }
+}
+function saveModelCache(){ try{ localStorage.setItem(LS_MCACHE, JSON.stringify(MODEL_CACHE)); }catch(e){} }
+function liveModels(v){ var c=MODEL_CACHE[v]; return (c && Array.isArray(c.models))?c.models:[]; }
+function modelMetaList(v){
+  var p=PROVIDERS[v]; if(!p) return [];
+  var base=(p.models||[]).slice();
+  liveModels(v).forEach(function(m){ if(!base.some(function(b){ return b.id===m.id; })) base.push(m); });
+  return base;
+}
+function discoveredMeta(v,id,name,can,price,note){
+  var ep="";
+  if(v==="openrouter") ep="https://openrouter.ai/api/v1/images";
+  else if(v==="pollinations") ep="https://gen.pollinations.ai/v1/images/edits";
+  else if(v==="gemini") ep="https://generativelanguage.googleapis.com/v1beta/models/"+id+":generateContent";
+  else if(v==="openai") ep="https://api.openai.com/v1/images/edits";
+  else if(v==="cloudflare") ep="https://api.cloudflare.com/client/v4/accounts/{ACCOUNT_ID}/ai/run/"+id;
+  return {
+    id:id, name:name, price:price||"以廠商計價為準（未內建價格）", can:!!can, endpoint:ep,
+    note:(note||"")+(note?"　":"")+"這筆是從廠商 API 抓到的新模型，價格與品質還沒驗證過，先小量試一張。",
+    discovered:true
+  };
+}
+function byModelName(a,b){ return String(a.name).localeCompare(String(b.name)); }
+
+async function fetchVendorModels(v,key,acct,worker){
+  var isPublic=(v==="openrouter"||v==="pollinations");
+  /* 這幾家實測從瀏覽器查不到（fal 沒有 CORS 標頭、Replicate 直接擋、智譜／Meta 沒有公開清單接口），
+     先講清楚，不要讓使用者以為是金鑰沒填。 */
+  if(["fal","replicate","zhipu","meta"].indexOf(v)>=0){
+    throw new Error("這家（"+PROVIDERS[v].label+"）沒有提供能從瀏覽器查詢的模型清單，只能沿用內建精選。");
+  }
+  if(!isPublic && v!=="cloudflare" && !key) throw new Error("這家要 API KEY 才查得到清單，先在上面貼上金鑰（或先存一組這家的模型）。");
+
+  if(v==="openrouter"){
+    var r=await fetch("https://openrouter.ai/api/v1/models");
+    if(!r.ok) throw new Error("OpenRouter 回應 HTTP "+r.status);
+    var j=await r.json(), out=[];
+    (j.data||[]).forEach(function(m){
+      var a=m.architecture||{};
+      if((a.output_modalities||[]).indexOf("image")<0) return;
+      var can=(a.input_modalities||[]).indexOf("image")>=0;
+      out.push(discoveredMeta("openrouter",m.id,m.name||m.id,can,"依 OpenRouter 標價（後台為準）",
+        can?"可以吃參考圖，能拿來試穿。":"只能文字生圖，不能試穿。"));
+    });
+    if(!out.length) throw new Error("OpenRouter 沒有回任何生圖模型");
+    return out.sort(byModelName);
+  }
+
+  if(v==="pollinations"){
+    var r2=await fetch("https://gen.pollinations.ai/models");
+    if(!r2.ok) throw new Error("Pollinations 回應 HTTP "+r2.status);
+    var j2=await r2.json(), out2=[];
+    (j2||[]).forEach(function(m){
+      if((m.output_modalities||[]).indexOf("image")<0) return;
+      if(String(m.name||"").indexOf("community/")===0) return;   /* 社群轉接的先不列，避免清單爆掉 */
+      var can=(m.supported_endpoints||[]).indexOf("/v1/images/edits")>=0;
+      out2.push(discoveredMeta("pollinations",m.name,m.title||m.name,can,"依 Pollinations Pollen 計價（後台為準）",
+        can?("可以吃參考圖（最多 "+m.max_reference_images+" 張），能拿來試穿。"):"只能文字生圖，不能試穿。"));
+    });
+    if(!out2.length) throw new Error("Pollinations 沒有回任何生圖模型");
+    return out2.sort(byModelName);
+  }
+
+  if(v==="gemini"){
+    var r3=await fetch("https://generativelanguage.googleapis.com/v1beta/models?pageSize=200&key="+encodeURIComponent(key));
+    var j3=await r3.json().catch(function(){ return null; });
+    if(!r3.ok) throw new Error((j3&&j3.error&&j3.error.message)||("Gemini 回應 HTTP "+r3.status));
+    var out3=[];
+    (j3.models||[]).forEach(function(m){
+      var id=String(m.name||"").replace(/^models\//,"");
+      if(!/image/i.test(id)) return;
+      var can=(m.supportedGenerationMethods||[]).indexOf("generateContent")>=0;
+      out3.push(discoveredMeta("gemini",id,m.displayName||id,can,"依 Google 官方計價（後台為準）",
+        can?"Gemini 影像模型，收參考圖做改圖。":"這個型號沒有 generateContent，可能不能生圖。"));
+    });
+    if(!out3.length) throw new Error("Google 回來的清單裡沒有名稱含 image 的模型");
+    return out3.sort(byModelName);
+  }
+
+  if(v==="openai"){
+    var r4=await fetch("https://api.openai.com/v1/models",{headers:{"Authorization":"Bearer "+key}});
+    var j4=await r4.json().catch(function(){ return null; });
+    if(!r4.ok) throw new Error((j4&&j4.error&&j4.error.message)||("OpenAI 回應 HTTP "+r4.status));
+    var out4=[];
+    (j4.data||[]).forEach(function(m){
+      var id=String(m.id||"");
+      if(!/image|dall-e/i.test(id)) return;
+      var can=/^gpt-image/i.test(id);
+      out4.push(discoveredMeta("openai",id,id,can,"依 OpenAI 官方計價（後台為準）",
+        can?"gpt-image 系列，走 /v1/images/edits，可以試穿。":"dall-e 系列沒有改圖接口，不能試穿。"));
+    });
+    if(!out4.length) throw new Error("OpenAI 回來的清單裡沒有生圖模型（可能是這把金鑰沒有權限）");
+    return out4.sort(byModelName);
+  }
+
+  if(v==="cloudflare"){
+    if(!worker) throw new Error("Cloudflare 要經你部署的 Worker 才查得到清單，先填「Worker 代理位址」。");
+    if(!key) throw new Error("先貼上 Cloudflare API Token。");
+    if(!/^[0-9a-f]{32}$/i.test(acct||"")) throw new Error("先填 Cloudflare Account ID。");
+    var base=String(worker).replace(/\/+$/,"");
+    var r5=await fetch(base+"/?models=1&account="+encodeURIComponent(acct),{headers:{"Authorization":"Bearer "+key}});
+    var j5=await r5.json().catch(function(){ return null; });
+    if(!r5.ok){
+      var msg=(j5&&j5.errors&&j5.errors[0]&&j5.errors[0].message)||("HTTP "+r5.status);
+      throw new Error(msg+"（如果是「只接受 POST」，代表 Worker 還是舊版，貼上新版 worker.js 再 Deploy 一次就好）");
+    }
+    var out5=[];
+    (j5.result||[]).forEach(function(m){
+      var task=String((m.task&&m.task.name)||"");
+      if(!/Text-to-Image|Image-to-Image/i.test(task)) return;
+      var can=/Image-to-Image/i.test(task);
+      out5.push(discoveredMeta("cloudflare",m.name,m.name,can,"依 Cloudflare 官方計價（後台為準）",
+        can?"Image-to-Image 任務，可以拿照片去改。":"只列 Text-to-Image，可能不吃照片。"));
+    });
+    if(!out5.length) throw new Error("Cloudflare 回來的清單裡沒有生圖模型");
+    return out5.sort(byModelName);
+  }
+
+  throw new Error("這家（"+PROVIDERS[v].label+"）沒有提供能從瀏覽器查詢的模型清單，請用內建精選。");
+}
+
+async function refreshModelList(){
+  var v=$("mVendor").value;
+  if(v==="custom"){ toast("自訂廠商沒有清單可查。"); return; }
+  var saved=state.models.filter(function(m){ return m.vendor===v; });
+  var key=$("mKey").value.trim() || (saved[0]&&saved[0].apiKey) || "";
+  var acct=$("mAccount").value.trim() || ((saved.filter(function(m){return m.accountId;})[0]||{}).accountId||"");
+  var worker=$("mWorker").value.trim() || ((saved.filter(function(m){return m.workerUrl;})[0]||{}).workerUrl||"");
+  var btn=$("mRefreshBtn"), oldLabel=btn.textContent;
+  btn.disabled=true; btn.textContent="查詢中…";
+  $("mListNote").textContent="正在向 "+PROVIDERS[v].label+" 查詢模型清單…";
+  try{
+    var list=await fetchVendorModels(v,key,acct,worker);
+    MODEL_CACHE[v]={at:Date.now(), models:list};
+    saveModelCache();
+    fillModelSelect();
+    toast("已更新 "+PROVIDERS[v].label+" 的模型清單：共 "+list.length+" 個生圖模型。");
+  }catch(e){
+    $("mListNote").innerHTML="<span class='err-text'>查詢失敗："+esc(e.message||String(e))+"</span>";
+  }finally{
+    btn.disabled=false; btn.textContent=oldLabel;
+  }
+}
+$("mRefreshBtn").addEventListener("click", refreshModelList);
+
 /* ============ 模型設定表單 ============ */
 function fillVendorSelect(){
   var sel=$("mVendor"); sel.innerHTML="";
@@ -629,7 +786,7 @@ function fillVendorSelect(){
 function currentFormModelMeta(){
   var v=$("mVendor").value, p=PROVIDERS[v]; if(!p) return null;
   if(v==="custom") return null;
-  return p.models.find(function(x){return x.id===$("mModel").value;})||null;
+  return modelMetaList(v).find(function(x){return x.id===$("mModel").value;})||null;
 }
 function fillModelSelect(){
   var v=$("mVendor").value, p=PROVIDERS[v];
@@ -640,12 +797,43 @@ function fillModelSelect(){
   if(v==="custom"){
     sel.style.display="none"; $("mModelText").style.display="block";
     $("mModelInfo").textContent="自訂廠商：自己填模型名稱與接口地址。生成時會用 OpenAI 相容的 /images/edits 方式呼叫（multipart，Authorization: Bearer）。";
+    $("mListNote").textContent="自訂廠商沒有清單可查。";
+    $("mRefreshBtn").disabled=true;
     return;
   }
+  $("mRefreshBtn").disabled=false;
   sel.style.display="block"; $("mModelText").style.display="none";
+  var keep=sel.value;
   sel.innerHTML="";
-  p.models.forEach(function(m){ var o=document.createElement("option"); o.value=m.id; o.textContent=m.name; sel.appendChild(o); });
+  var builtin=(p.models||[]).slice();
+  if(builtin.length){
+    var g1=document.createElement("optgroup"); g1.label="內建精選";
+    builtin.forEach(function(m){ var o=document.createElement("option"); o.value=m.id; o.textContent=m.name; g1.appendChild(o); });
+    sel.appendChild(g1);
+  }
+  var extra=liveModels(v).filter(function(m){ return !builtin.some(function(b){ return b.id===m.id; }); });
+  if(extra.length){
+    var g2=document.createElement("optgroup"); g2.label="廠商 API 抓到的新模型（"+extra.length+"）";
+    extra.forEach(function(m){
+      var o=document.createElement("option"); o.value=m.id;
+      o.textContent=m.name+(m.can?"":"（不能吃照片）");
+      g2.appendChild(o);
+    });
+    sel.appendChild(g2);
+  }
+  if(keep && modelMetaList(v).some(function(m){ return m.id===keep; })) sel.value=keep;
+  updateListNote(v);
   onModelChange();
+}
+function updateListNote(v){
+  var c=MODEL_CACHE[v];
+  if(!c || !c.models || !c.models.length){
+    $("mListNote").textContent="清單：內建精選。（按左邊的鈕可以向廠商要最新清單）";
+    return;
+  }
+  var d=new Date(c.at);
+  var when=(d.getMonth()+1)+"/"+d.getDate()+" "+("0"+d.getHours()).slice(-2)+":"+("0"+d.getMinutes()).slice(-2);
+  $("mListNote").textContent="清單：內建精選＋廠商 API（"+when+" 抓到 "+c.models.length+" 個生圖模型）";
 }
 function onModelChange(){
   var meta=currentFormModelMeta(); if(!meta) return;
@@ -1578,6 +1766,7 @@ $("exportBtn").addEventListener("click", function(){
 /* ============ 啟動 ============ */
 (async function init(){
   loadSettings();
+  loadModelCache();
   if(!pwHash()) state.unlocked=true;
   fillVendorSelect();
   fillCatSelect($("wCat"), "全身");
