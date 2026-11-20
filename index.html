@@ -117,6 +117,12 @@ label.fl{display:block;font-size:.9rem;color:var(--ink2);margin:10px 0 4px}
 .anglecell .cap{text-align:center;font-size:.82rem;color:var(--ink2);padding:4px 2px}
 .anglemiss{aspect-ratio:3/4;display:flex;align-items:center;justify-content:center;border:1.5px dashed var(--line);border-radius:8px;color:var(--ink2);font-size:.9rem}
 .wardrobe-sel{outline:3px solid var(--accent);outline-offset:-3px}
+.card.wcard .ph{position:relative;cursor:pointer}
+.card.wcard .ph img{cursor:pointer}
+.card.wcard .ph .pickbadge{position:absolute;top:8px;right:8px;background:var(--accent);color:var(--accent-ink);font-size:.78rem;font-weight:700;padding:1px 9px;border-radius:999px;display:none}
+.card.wcard.wardrobe-sel .ph .pickbadge{display:inline-block}
+.card .brand{font-size:.8rem;font-weight:700;color:var(--ink2);letter-spacing:.02em;margin:0 0 1px}
+.card .copybtn{margin:0 0 8px}
 .checkline{display:flex;align-items:center;gap:8px;margin-top:8px}
 .checkline input{width:1.3rem;height:1.3rem}
 /* lock overlay */
@@ -215,7 +221,7 @@ hr.sep{border:none;border-top:1px solid var(--line);margin:16px 0}
 
   <!-- 2. 衣櫃 -->
   <section class="block" id="secWardrobe">
-    <div class="sec-head"><h2>2．衣櫃</h2><span class="hint">點「選來試穿」挑 1–3 件一起搭；每件都可再編輯名稱、分類、網址、備註或換照片。照片整張縮進框裡顯示，不裁切。</span></div>
+    <div class="sec-head"><h2>2．衣櫃</h2><span class="hint">直接點照片就是選來試穿，再點一下取消，一次最多 3 件；照片下方的「複製這件」會再產生一件，方便同款不同色。每件都可再編輯品牌、名稱、分類、價格、網址、備註或換照片。</span></div>
     <div class="form-grid">
       <div>
         <label class="fl" for="wFile">用上傳照片新增</label>
@@ -233,10 +239,12 @@ hr.sep{border:none;border-top:1px solid var(--line);margin:16px 0}
     <div id="wAddForm" style="display:none">
       <div class="main-photo" style="aspect-ratio:16/10"><img id="wPreview" alt="待新增的衣服照片" /></div>
       <div class="form-grid">
+        <div class="full"><label class="fl">品牌名稱（可不填）</label><input type="text" id="wBrand" placeholder="例：UNIQLO、NIKE" /></div>
         <div><label class="fl">衣服名稱</label><input type="text" id="wName" placeholder="例：麻花圓領針織外套" /></div>
         <div><label class="fl">分類</label><select id="wCat"></select></div>
         <div class="full"><label class="fl">網址（可不填）</label><input type="url" id="wUrl" placeholder="https://…商品頁" /></div>
-        <div class="full"><label class="fl">備註（可不填，例：價格）</label><input type="text" id="wNote" placeholder="例：價格 650" /></div>
+        <div><label class="fl">價格（可不填）</label><input type="text" id="wPrice" placeholder="例：650" /></div>
+        <div><label class="fl">備註（可不填）</label><input type="text" id="wNote" placeholder="例：去年週年慶買的" /></div>
       </div>
       <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
         <button class="btn primary" id="wSaveBtn">加入衣櫃</button>
@@ -251,12 +259,12 @@ hr.sep{border:none;border-top:1px solid var(--line);margin:16px 0}
 
   <!-- 3. 試穿 -->
   <section class="block" id="secTryon">
-    <div class="sec-head"><h2>3．試穿</h2><span class="hint">用目前的人物底圖 ＋ 衣櫃選好的 1–3 件衣服合成。單張生活照當底圖時會保留原背景；用多角度底圖時是素色背景。</span></div>
+    <div class="sec-head"><h2>3．試穿</h2><span class="hint">用目前的人物底圖 ＋ 衣櫃選好的 1–3 張照片合成：衣櫃照片裡 MODEL 身上穿的整套上下身（含洋裝、外套、鞋子），會換到底圖那個人身上。單張生活照當底圖時會保留原背景；用多角度底圖時是素色背景。</span></div>
     <p class="kv" id="tryonSummary">尚未選底圖與衣服。</p>
     <p class="kv">使用中的模型：<strong id="tryonModelName">（尚未設定）</strong> <span id="tryonModelPrice"></span></p>
 
     <h3 style="margin:16px 0 4px;font-family:'Noto Serif TC',serif">這次要用的照片</h3>
-    <p class="kv" id="tryonPreviewEmpty">還沒選底圖與衣服：先到「1．人物照片」選一張，再到「2．衣櫃」勾選要試穿的 1–3 件。</p>
+    <p class="kv" id="tryonPreviewEmpty">還沒選底圖與衣服：先到「1．人物照片」選一張，再到「2．衣櫃」點照片選要試穿的 1–3 件。</p>
     <div class="tryon-preview" id="tryonPreview"></div>
 
     <label class="fl" for="tryonExtra">補充提示詞（可留空，留空就用預設的試穿指令）</label>
@@ -390,11 +398,13 @@ hr.sep{border:none;border-top:1px solid var(--line);margin:16px 0}
     <div class="main-photo" style="aspect-ratio:16/10"><img id="ePreview" alt="這件衣服的照片" /></div>
     <label class="btn small" for="eFile">點照片換一張（也可點這裡）</label>
     <input type="file" id="eFile" accept="image/*" hidden />
+    <label class="fl">品牌名稱（可不填）</label><input type="text" id="eBrand" placeholder="例：UNIQLO、NIKE" />
     <label class="fl">衣服名稱</label><input type="text" id="eName" />
     <label class="fl">分類</label><select id="eCat"></select>
     <label class="fl">網址（可不填，填了可直接點開）</label><input type="url" id="eUrl" placeholder="https://…" />
     <p style="margin:2px 0"><a id="eUrlOpen" href="#" target="_blank" rel="noopener" style="display:none" class="linklike">開啟這個網址 ↗</a></p>
-    <label class="fl">備註（可不填，例：價格）</label><input type="text" id="eNote" />
+    <label class="fl">價格（可不填）</label><input type="text" id="ePrice" placeholder="例：650" />
+    <label class="fl">備註（可不填）</label><input type="text" id="eNote" />
     <div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap">
       <button class="btn primary" id="eSaveBtn">儲存修改</button>
       <button class="btn ghost" id="eCancelBtn">取消</button>
@@ -456,7 +466,7 @@ var PROVIDERS = {
   ]},
   custom: { label: "自訂廠商", models: [] }
 };
-var CATEGORIES = ["全身", "上衣", "下身", "洋裝", "外套", "鞋子", "配件", "其他"];
+var CATEGORIES = ["上衣", "褲子", "裙子", "洋裝", "外套", "鞋子", "配件", "其他"];
 var ANGLES = [
   { key: "front", label: "正面", prompt: "front view, facing the camera" },
   { key: "threequarter", label: "斜前方", prompt: "three-quarter front view, body turned about 35 degrees" },
@@ -1204,6 +1214,10 @@ var pendingWardrobeImage=null;
 function fillCatSelect(sel, val){
   sel.innerHTML="";
   CATEGORIES.forEach(function(c){ var o=document.createElement("option"); o.value=c; o.textContent=c; sel.appendChild(o); });
+  /* 舊資料的分類（例如已移除的「全身」）照原樣留著，使用者自己決定要不要改 */
+  if(val && CATEGORIES.indexOf(val)<0){
+    var o2=document.createElement("option"); o2.value=val; o2.textContent=val+"（舊分類）"; sel.appendChild(o2);
+  }
   if(val) sel.value=val;
 }
 function showWardrobeAddForm(dataUrl, linkUrl){
@@ -1262,10 +1276,10 @@ $("wSaveBtn").addEventListener("click", async function(){
   if(!pendingWardrobeImage){ toast("先選一張衣服照片。"); return; }
   var name=$("wName").value.trim();
   if(!name){ toast("給這件衣服一個名稱。"); return; }
-  var rec={ id:uid(), dataUrl:pendingWardrobeImage, name:name, category:$("wCat").value, url:$("wUrl").value.trim(), note:$("wNote").value.trim(), createdAt:Date.now() };
+  var rec={ id:uid(), dataUrl:pendingWardrobeImage, name:name, brand:$("wBrand").value.trim(), category:$("wCat").value, price:$("wPrice").value.trim(), url:$("wUrl").value.trim(), note:$("wNote").value.trim(), createdAt:Date.now() };
   await idbPut("wardrobe",rec); state.wardrobe.unshift(rec);
   pendingWardrobeImage=null; $("wAddForm").style.display="none";
-  $("wName").value=""; $("wUrl").value=""; $("wNote").value=""; $("wLink").value="";
+  $("wName").value=""; $("wBrand").value=""; $("wPrice").value=""; $("wUrl").value=""; $("wNote").value=""; $("wLink").value="";
   renderWardrobe();
 });
 function renderWardrobe(){
@@ -1274,23 +1288,38 @@ function renderWardrobe(){
   var selCount=Object.keys(state.selectedWardrobe).filter(function(k){return state.selectedWardrobe[k];}).length;
   $("wSelCount").textContent=selCount;
   state.wardrobe.forEach(function(w){
-    var card=document.createElement("div"); card.className="card wcard"+(state.selectedWardrobe[w.id]?" wardrobe-sel":"");
+    var on=!!state.selectedWardrobe[w.id];
+    var card=document.createElement("div"); card.className="card wcard"+(on?" wardrobe-sel":"");
     var noteUrl=(w.note||"").match(/https?:\/\/\S+/);
-    card.innerHTML="<div class='ph'><img alt='"+esc(w.name)+"的照片'/></div><div class='bd'>"+
+    card.innerHTML="<div class='ph'><img alt='"+esc(w.name)+"的照片'/><span class='pickbadge'>✓ 已選</span></div><div class='bd'>"+
+      "<button class='btn small copybtn' data-a='copy'>複製這件</button>"+
+      (w.brand?"<div class='brand'>"+esc(w.brand)+"</div>":"")+
       "<div class='nm'>"+esc(w.name)+"</div>"+
-      "<div class='meta'>"+esc(w.category)+(w.note?"<br/>"+esc(w.note.replace(/https?:\/\/\S+/g,"").trim()||""):"")+"</div>"+
+      "<div class='meta'>"+esc(w.category)+"</div>"+
+      (w.price?"<div class='meta'>價格："+esc(w.price)+"</div>":"")+
+      (w.note?"<div class='meta'>"+esc(w.note.replace(/https?:\/\/\S+/g,"").trim()||"")+"</div>":"")+
       (w.url?"<div class='meta'><a href='"+esc(w.url)+"' target='_blank' rel='noopener'>商品連結 ↗</a></div>":(!w.url&&noteUrl?"<div class='meta'><a href='"+esc(noteUrl[0])+"' target='_blank' rel='noopener'>商品連結 ↗</a></div>":""))+
-      "<div class='checkline'><button class='btn small "+(state.selectedWardrobe[w.id]?"primary":"")+"' data-a='pick'>"+(state.selectedWardrobe[w.id]?"✓ 已選來試穿":"選來試穿")+"</button></div>"+
       "<div class='row'><button class='linklike' data-a='edit'>編輯</button><button class='linklike' data-a='view'>放大</button><button class='linklike' data-a='del' style='color:var(--err)'>刪除這件</button></div></div>";
     card.querySelector("img").src=w.dataUrl;
-    card.querySelector("[data-a=pick]").addEventListener("click", function(){
+    var ph=card.querySelector(".ph");
+    ph.title=on?"點一下取消選取":"點一下選來試穿";
+    ph.addEventListener("click", function(){
       if(state.selectedWardrobe[w.id]){ delete state.selectedWardrobe[w.id]; }
       else{
-        var n=Object.keys(state.selectedWardrobe).length;
+        var n=Object.keys(state.selectedWardrobe).filter(function(k){return state.selectedWardrobe[k];}).length;
         if(n>=3){ toast("一次最多選 3 件一起試穿。"); return; }
         state.selectedWardrobe[w.id]=true;
       }
       renderWardrobe(); renderTryonSummary();
+    });
+    /* 複製一件：同款不同色時不用從頭新增，複製後自己按編輯改名／換照片就好 */
+    card.querySelector("[data-a=copy]").addEventListener("click", async function(){
+      var copy={ id:uid(), dataUrl:w.dataUrl, name:w.name, brand:w.brand||"", category:w.category||"", price:w.price||"", url:w.url||"", note:w.note||"", createdAt:Date.now() };
+      await idbPut("wardrobe",copy);
+      var idx=state.wardrobe.indexOf(w);
+      if(idx<0) state.wardrobe.unshift(copy); else state.wardrobe.splice(idx+1,0,copy);
+      renderWardrobe(); renderTryonSummary();
+      toast("已複製一件，按「編輯」改成你要的顏色或換照片。");
     });
     card.querySelector("[data-a=view]").addEventListener("click", function(){ openViewer(w.dataUrl); });
     card.querySelector("[data-a=del]").addEventListener("click", async function(){
@@ -1308,7 +1337,7 @@ var editingWardrobe=null, editingImage=null;
 function openEditWardrobe(w){
   editingWardrobe=w; editingImage=null;
   $("ePreview").src=w.dataUrl;
-  $("eName").value=w.name; fillCatSelect($("eCat"), w.category);
+  $("eName").value=w.name; $("eBrand").value=w.brand||""; $("ePrice").value=w.price||""; fillCatSelect($("eCat"), w.category);
   var url=w.url||""; var note=w.note||"";
   if(!url){ var m=note.match(/https?:\/\/\S+/); if(m){ url=m[0]; note=note.replace(m[0],"").replace(/^來自商品連結：?/,"").trim(); } }
   $("eUrl").value=url; $("eNote").value=note;
@@ -1329,6 +1358,8 @@ $("eCancelBtn").addEventListener("click", function(){ $("editModal").classList.r
 $("eSaveBtn").addEventListener("click", async function(){
   if(!editingWardrobe) return;
   editingWardrobe.name=$("eName").value.trim()||editingWardrobe.name;
+  editingWardrobe.brand=$("eBrand").value.trim();
+  editingWardrobe.price=$("ePrice").value.trim();
   editingWardrobe.category=$("eCat").value;
   editingWardrobe.url=$("eUrl").value.trim();
   editingWardrobe.note=$("eNote").value.trim();
@@ -1676,9 +1707,11 @@ async function runTryon(){
   if(!items.length){ toast("先在衣櫃選 1–3 件衣服。"); return; }
   var images=[base.dataUrl].concat(items.map(function(w){return w.dataUrl;}));
   var extra=($("tryonExtra")&&$("tryonExtra").value||"").trim();
-  var prompt="Virtual try-on photo edit. The first image is the person. The following image(s) are garments. Dress the person in those garments, combining them as one outfit. Keep the person's face, hair, body shape and pose exactly the same. "+
+  /* 衣櫃照片都是「MODEL 穿著衣服」的參考照，所以指令要的是：把 MODEL 身上整套的
+     上衣與下身都換到底圖那個人身上（不是只換一件單品）。 */
+  var prompt="Virtual try-on photo edit. The first image is the person we keep. Each following image is a wardrobe reference: if it shows a model wearing clothes, take the clothes that model is wearing — both the upper-body garment and the lower-body garment, plus any dress, outerwear or shoes that clearly belong to that outfit; if it only shows a single garment on its own, take that garment. Put all of those clothes on the person in the first image, combining every reference into one complete outfit. Copy only the clothes: never copy the model's face, hair, body, pose or background. Keep the person's face, hair, body shape and pose exactly the same. "+
     (base.fromAngles?"Keep the plain solid studio background.":"Keep the original background and lighting of the person's photo exactly as it is.")+
-    " Photorealistic, natural fabric drape and fit.";
+    " The clothes must be worn on that person's body, photorealistic, with natural fabric drape and fit.";
   if(extra) prompt+=" Extra requirements from the user (follow these while keeping everything above): "+extra;
   $("tryonProgWrap").style.display="block"; $("tryonProg").style.width="15%";
   $("tryonStatus").textContent="準備照片並送出給 "+vendorLabel(m)+"…（階段進度）";
@@ -2011,7 +2044,7 @@ $("exportBtn").addEventListener("click", function(){
   loadModelCache();
   if(!pwHash()) state.unlocked=true;
   fillVendorSelect();
-  fillCatSelect($("wCat"), "全身");
+  fillCatSelect($("wCat"), "");
   try{
     state.photos=(await idbAll("photos")).sort(function(a,b){return a.createdAt-b.createdAt;});
     state.wardrobe=(await idbAll("wardrobe")).sort(function(a,b){return b.createdAt-a.createdAt;});
