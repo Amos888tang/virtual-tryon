@@ -65,6 +65,15 @@ label.fl{display:block;font-size:.9rem;color:var(--ink2);margin:10px 0 4px}
 .card .meta{font-size:.86rem;color:var(--ink2);margin-top:2px;word-break:break-all}
 .card .row{display:flex;flex-wrap:wrap;gap:6px 12px;margin-top:8px}
 .linklike{color:var(--accent);text-decoration:underline;text-underline-offset:3px;background:none;border:none;padding:6px 2px;font-size:.9rem;min-height:2rem}
+/* 試穿前確認用的縮圖 */
+.tryon-preview{display:none;gap:10px;flex-wrap:wrap;align-items:flex-start;margin:6px 0 2px}
+.tryon-preview .pv{position:relative;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--surface2);width:104px}
+.tryon-preview .pv.base{width:132px;border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-soft)}
+.tryon-preview .pv img{width:100%;aspect-ratio:3/4;object-fit:cover;display:block}
+.tryon-preview .pv .tag{position:absolute;left:0;top:0;background:var(--accent);color:var(--accent-ink);font-size:.72rem;padding:2px 7px;border-bottom-right-radius:8px}
+.tryon-preview .pv .cap{font-size:.78rem;padding:4px 6px;color:var(--ink2);word-break:break-all;line-height:1.3}
+.tryon-preview .pv .rm{position:absolute;right:3px;top:3px;width:1.5rem;height:1.5rem;border-radius:50%;border:1px solid var(--line);background:var(--surface);color:var(--err);font-size:.8rem;line-height:1;padding:0;min-height:0}
+.card .modelinfo{display:none;font-size:.82rem;color:var(--ink2);margin-top:6px;padding:6px 8px;background:var(--surface2);border-radius:8px;word-break:break-all;line-height:1.45}
 .thumb{position:relative;border:2px solid var(--line);border-radius:10px;overflow:hidden;background:var(--surface2);aspect-ratio:3/4;cursor:pointer;padding:0}
 .thumb img{width:100%;height:100%;object-fit:contain;display:block}
 .thumb.sel{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-soft)}
@@ -118,7 +127,9 @@ html.lock-pending body{overflow:hidden}
 #viewer{position:fixed;inset:0;background:rgba(10,8,6,.94);z-index:80;display:none;flex-direction:column}
 #viewer.show{display:flex}
 #viewer .vbar{display:flex;gap:8px;justify-content:center;padding:10px;flex-wrap:wrap}
-#viewer .vbar button{background:#2e2723;color:#f0e7dd;border:1px solid #57493e;border-radius:8px;padding:8px 14px}
+#viewer .vbar button,#viewer .vbar a{background:#2e2723;color:#f0e7dd;border:1px solid #57493e;border-radius:8px;padding:8px 14px;text-decoration:none;font-size:inherit;cursor:pointer}
+#viewer .vbar a{background:#b3402a;border-color:#b3402a;color:#fff}
+.card .ph img{cursor:zoom-in}
 #vstage{flex:1;overflow:hidden;position:relative;touch-action:none}
 #vimg{position:absolute;left:50%;top:50%;max-width:none;transform-origin:center;cursor:grab;user-select:none;-webkit-user-drag:none}
 /* modal */
@@ -145,17 +156,25 @@ hr.sep{border:none;border-top:1px solid var(--line);margin:16px 0}
 
 <div id="lockOverlay" role="dialog" aria-label="解鎖畫面">
   <div class="lockbox">
-    <h2>先選模型、輸入密碼</h2>
-    <p class="kv">這個靜態版每次開啟都要先解鎖：選一組你已經儲存的模型，輸入你的密碼，才能開始使用。金鑰只會送到你選的那家廠商，不會經過任何其他伺服器。</p>
-    <label class="fl" for="lockModelSel">使用哪一組模型</label>
-    <select id="lockModelSel"></select>
-    <label class="fl" for="lockPw">密碼</label>
-    <input type="password" id="lockPw" autocomplete="current-password" placeholder="輸入你設定的密碼" />
-    <p id="lockErr" class="err-text" style="min-height:1.3em"></p>
-    <button class="btn primary" id="lockUnlockBtn" style="width:100%">解鎖並開始使用</button>
-    <hr class="sep" />
-    <p class="kv">忘記密碼只能重置：重置會<strong>清除全部已存的模型設定與金鑰</strong>（照片與衣櫃不會被刪），之後要重新新增模型、重新設密碼。</p>
-    <button class="btn danger" id="lockResetBtn">忘記密碼，重置模型設定</button>
+    <div id="lockForm">
+      <h2>先選模型、輸入密碼</h2>
+      <p class="kv">這個靜態版每次開啟都要先解鎖：選一組你已經儲存的模型，輸入你的密碼，才能開始使用。金鑰只會送到你選的那家廠商，不會經過任何其他伺服器。</p>
+      <label class="fl" for="lockModelSel">使用哪一組模型</label>
+      <select id="lockModelSel"></select>
+      <label class="fl" for="lockPw">密碼</label>
+      <input type="password" id="lockPw" autocomplete="current-password" placeholder="輸入你設定的密碼" />
+      <p id="lockErr" class="err-text" style="min-height:1.3em"></p>
+      <button class="btn primary" id="lockUnlockBtn" style="width:100%">解鎖並開始使用</button>
+      <hr class="sep" />
+      <p class="kv">忘記密碼只能重置：重置會<strong>清除全部已存的模型設定與金鑰</strong>（照片與衣櫃不會被刪），之後要重新新增模型、重新設密碼。</p>
+      <button class="btn danger" id="lockResetBtn">忘記密碼，重置模型設定</button>
+    </div>
+    <div id="lockNoModels" style="display:none">
+      <h2>沒有模型可以解鎖</h2>
+      <p class="kv">你目前沒有任何已儲存的模型（可能剛才把最後一組刪掉了），所以沒有東西可以解鎖。清除密碼後就能直接進去重新新增模型。</p>
+      <button class="btn primary" id="lockStartOverBtn" style="width:100%">清除密碼、重新開始</button>
+      <p class="kv" style="margin-top:10px;font-size:.85rem">照片、衣櫃、成品都不會被刪，只會清掉解鎖密碼。</p>
+    </div>
   </div>
 </div>
 
@@ -232,7 +251,16 @@ hr.sep{border:none;border-top:1px solid var(--line);margin:16px 0}
     <div class="sec-head"><h2>3．試穿</h2><span class="hint">用目前的人物底圖 ＋ 衣櫃選好的 1–3 件衣服合成。單張生活照當底圖時會保留原背景；用多角度底圖時是素色背景。</span></div>
     <p class="kv" id="tryonSummary">尚未選底圖與衣服。</p>
     <p class="kv">使用中的模型：<strong id="tryonModelName">（尚未設定）</strong> <span id="tryonModelPrice"></span></p>
-    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
+
+    <h3 style="margin:16px 0 4px;font-family:'Noto Serif TC',serif">這次要用的照片</h3>
+    <p class="kv" id="tryonPreviewEmpty">還沒選底圖與衣服：先到「1．人物照片」選一張，再到「2．衣櫃」勾選要試穿的 1–3 件。</p>
+    <div class="tryon-preview" id="tryonPreview"></div>
+
+    <label class="fl" for="tryonExtra">補充提示詞（可留空，留空就用預設的試穿指令）</label>
+    <textarea id="tryonExtra" rows="3" placeholder="例：外套不要扣起來、褲管要蓋住鞋面、光線自然一點、保留原本背景"></textarea>
+    <p class="kv" style="margin-top:4px">這裡寫的會附加在預設指令後面，不會蓋掉「保留臉部、髮型、姿勢與身形」那些要求。確認上面的照片都對，再按開始試穿。</p>
+
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
       <button class="btn primary" id="tryonBtn">開始試穿</button>
       <button class="btn" id="tryonRetryBtn" style="display:none">重試上次失敗的試穿</button>
     </div>
@@ -330,6 +358,7 @@ hr.sep{border:none;border-top:1px solid var(--line);margin:16px 0}
     <button id="vZoomOut">－ 縮小</button>
     <button id="vZoomReset">原始比例</button>
     <button id="vZoomIn">＋ 放大</button>
+    <a id="vDownload" href="#" download="tryon.jpg">⬇ 下載這張</a>
     <button id="vClose">✕ 關閉</button>
   </div>
   <div id="vstage"><img id="vimg" alt="放大檢視的圖片" /></div>
@@ -418,8 +447,9 @@ var PROVIDERS = {
     { id: "fal-ai/flux-pro/kontext", name: "FLUX.1 Kontext [pro]", price: "$0.04/張", can: true, endpoint: "https://queue.fal.run/fal-ai/flux-pro/kontext", note: "通用多圖改圖，經 fal 的 queue API 呼叫。" }
   ]},
   replicate: { label: "Replicate", models: [
-    { id: "cuuupid/idm-vton", name: "IDM-VTON（專門試穿）", price: "約 $0.023–0.03/次（依 GPU 時間）", can: true, endpoint: "https://api.replicate.com/v1/predictions", note: "專門試穿模型，授權 CC BY-NC-SA 4.0，只能非商業使用。有少量 Try-for-Free 次數，數量未公布。" },
-    { id: "black-forest-labs/flux-kontext-pro", name: "FLUX.1 Kontext [pro]", price: "$0.04/張", can: true, endpoint: "https://api.replicate.com/v1/predictions", note: "經 Replicate 的 predictions API 呼叫。" }
+    { id: "cuuupid/idm-vton", name: "IDM-VTON（專門試穿）", price: "約 $0.023–0.03/次（依 GPU 時間）", can: true, endpoint: "https://api.replicate.com/v1/predictions", note: "專門試穿模型，授權 CC BY-NC-SA 4.0，只能非商業使用。這是社群模型，Replicate 要求指定版本號：到模型頁的 API 分頁複製 version 那一長串，把型號填成 cuuupid/idm-vton:版本號（用下面「其他 Replicate 模型」那一項填）。" },
+    { id: "black-forest-labs/flux-kontext-pro", name: "FLUX.1 Kontext [pro]", price: "$0.04/張", can: true, endpoint: "https://api.replicate.com/v1/predictions", note: "官方模型，會走 /v1/models/black-forest-labs/flux-kontext-pro/predictions，不用填版本號。" },
+    { id: "__custom__", name: "其他 Replicate 模型（自己填 owner/name 或 owner/name:版本號）", price: "依模型而定", can: true, endpoint: "https://api.replicate.com/v1/predictions", note: "官方模型填 owner/name 就好；社群模型多半要版本號，寫成 owner/name:版本號。不確定就去 Replicate 模型頁的 API 分頁看它示範怎麼呼叫。" }
   ]},
   custom: { label: "自訂廠商", models: [] }
 };
@@ -448,6 +478,64 @@ async function hashPw(pw){
   for(var i=0;i<s.length;i++){ h^=s.charCodeAt(i); h=Math.imul(h,0x01000193)>>>0; }
   return "fnv"+h.toString(16);
 }
+/* ============ 金鑰加密（AES-GCM，金鑰由密碼派生） ============ */
+/* 目的：localStorage 裡不再出現明碼 API Key。沒解鎖時存的是密文，用開發者工具也讀不到；
+   解鎖後才在記憶體裡還原。忘記密碼的代价是重填金鑰（照片、衣櫃、成品都不受影響）。 */
+var LS_SALT="tryonStatic.kdfSalt.v1";
+var sessionKey=null;
+function hasSubtle(){ return !!(window.crypto && crypto.subtle && window.isSecureContext!==false); }
+function b64(u8){ var s=""; for(var i=0;i<u8.length;i++) s+=String.fromCharCode(u8[i]); return btoa(s); }
+function unb64(str){ var bin=atob(str), u=new Uint8Array(bin.length); for(var i=0;i<bin.length;i++) u[i]=bin.charCodeAt(i); return u; }
+function newSalt(){ var a=new Uint8Array(16); crypto.getRandomValues(a); return b64(a); }
+async function deriveKek(pw, saltB64){
+  var base=await crypto.subtle.importKey("raw", new TextEncoder().encode(pw), "PBKDF2", false, ["deriveKey"]);
+  return await crypto.subtle.deriveKey({name:"PBKDF2", salt:unb64(saltB64), iterations:210000, hash:"SHA-256"},
+    base, {name:"AES-GCM", length:256}, false, ["encrypt","decrypt"]);
+}
+async function encryptSecret(plain){
+  if(!sessionKey || !plain) return null;
+  var iv=new Uint8Array(12); crypto.getRandomValues(iv);
+  var ct=new Uint8Array(await crypto.subtle.encrypt({name:"AES-GCM", iv:iv}, sessionKey, new TextEncoder().encode(plain)));
+  return "v1:"+b64(iv)+":"+b64(ct);
+}
+async function decryptSecret(str){
+  if(!str || String(str).indexOf("v1:")!==0 || !sessionKey) return null;
+  var parts=String(str).split(":");
+  var pt=await crypto.subtle.decrypt({name:"AES-GCM", iv:unb64(parts[1])}, sessionKey, unb64(parts[2]));
+  return new TextDecoder().decode(pt);
+}
+/* 密碼驗證通過後建立這次工作階段的金鑰；舊資料（明碼金鑰）順便升級成密文。 */
+async function establishSession(pw){
+  if(!hasSubtle()){ sessionKey=null; return false; }
+  var salt=localStorage.getItem(LS_SALT);
+  if(!salt){ salt=newSalt(); localStorage.setItem(LS_SALT, salt); }
+  sessionKey=await deriveKek(pw, salt);
+  return true;
+}
+async function loadKeysFromStorage(){
+  var bad=[];
+  for(var i=0;i<state.models.length;i++){
+    var m=state.models[i];
+    if(m.keyEnc){
+      try{ m.apiKey=await decryptSecret(m.keyEnc); if(!m.apiKey) bad.push(m.modelName); }
+      catch(e){ m.apiKey=""; bad.push(m.modelName); }
+    } else if(m.apiKey && sessionKey){
+      m.keyEnc=await encryptSecret(m.apiKey);   /* 舊版明碼資料：當場加密 */
+    }
+  }
+  saveModels();
+  return bad;
+}
+async function encryptAllKeys(){
+  if(!sessionKey) return 0;
+  var n=0;
+  for(var i=0;i<state.models.length;i++){
+    if(state.models[i].apiKey){ state.models[i].keyEnc=await encryptSecret(state.models[i].apiKey); n++; }
+  }
+  if(n) saveModels();
+  return n;
+}
+
 function fileToDataUrl(file, maxDim){
   return new Promise(function(res,rej){
     var url=URL.createObjectURL(file); var img=new Image();
@@ -523,7 +611,6 @@ function loadSettings(){
   state.models=state.models.filter(function(m){ return m.vendor!=="inception"; });
   state.activeModelId=localStorage.getItem(LS_ACTIVE)||null;
   if(state.activeModelId && !state.models.some(function(m){return m.id===state.activeModelId;})) state.activeModelId=null;
-  if(!state.activeModelId && state.models.length) state.activeModelId=null;
   /* 舊版把 Gemini 指向 /v1beta/openai/images/edits，那條路徑不是給瀏覽器用的生圖接口，
      實測會被跨域擋掉。已存的設定直接遷移到原生的 :generateContent。 */
   var migrated=false;
@@ -535,7 +622,16 @@ function loadSettings(){
   });
   if(migrated) saveModels();
 }
-function saveModels(){ localStorage.setItem(LS_MODELS, JSON.stringify(state.models)); if(state.activeModelId) localStorage.setItem(LS_ACTIVE,state.activeModelId); else localStorage.removeItem(LS_ACTIVE); }
+function saveModels(){
+  /* 只寫出「不含明碼金鑰」的版本：金鑰以 keyEnc（密文）儲存，沒設密碼時才退回明碼 */
+  var out=state.models.map(function(m){
+    var c={}; for(var k in m){ if(k!=="apiKey") c[k]=m[k]; }
+    if(!c.keyEnc && m.apiKey && !pwHash()) c.apiKey=m.apiKey;  /* 沒設密碼＝沒有金鑰可加密，只能明碼（卡片上會警示） */
+    return c;
+  });
+  localStorage.setItem(LS_MODELS, JSON.stringify(out));
+  if(state.activeModelId) localStorage.setItem(LS_ACTIVE,state.activeModelId); else localStorage.removeItem(LS_ACTIVE);
+}
 function pwHash(){ return localStorage.getItem(LS_PWHASH)||null; }
 function activeModel(){ return state.models.find(function(m){return m.id===state.activeModelId;})||null; }
 function modelOf(id){ return state.models.find(function(m){return m.id===id;})||null; }
@@ -545,7 +641,13 @@ function findModelMeta(m){
   if(!PROVIDERS[m.vendor]) return null;
   return modelMetaList(m.vendor).find(function(x){return x.id===m.modelId;})||null;
 }
-function modelCanTryOn(m){ var meta=findModelMeta(m); if(m.vendor==="custom") return true; return meta?meta.can:false; }
+function modelCanTryOn(m){
+  var meta=findModelMeta(m);
+  if(m.vendor==="custom") return true;
+  if(meta) return meta.can;
+  /* 自己填的型號（例如 Replicate 的 owner/name:版本號）查不到內建資料，先允許試，失敗再看錯誤訊息 */
+  return m.vendor==="replicate";
+}
 function modelPrice(m){ var meta=findModelMeta(m); return meta?meta.price:(m.price||""); }
 
 /* ============ 密碼流程 ============ */
@@ -575,9 +677,13 @@ $("pwSetBtn").addEventListener("click", async function(){
   if(a.length<4){ $("pwSetupErr").textContent="密碼至少 4 個字元。"; return; }
   if(a!==b){ $("pwSetupErr").textContent="兩次輸入不一樣，請再確認。"; return; }
   localStorage.setItem(LS_PWHASH, await hashPw(a));
+  var encOK=await establishSession(a);
+  var n=encOK?await encryptAllKeys():0;
   $("pwNew").value=""; $("pwNew2").value=""; $("pwSetupErr").textContent="";
-  toast("密碼已設定，下次開啟會先跳解鎖畫面。");
-  refreshPwSetup();
+  toast(encOK
+    ? ("密碼已設定，"+n+" 組金鑰已改成加密儲存；下次開啟會先跳解鎖畫面。")
+    : "密碼已設定，但這個瀏覽器不支援加密，金鑰仍以明碼儲存。");
+  refreshPwSetup(); renderModels();
 });
 
 /* ============ 鎖定畫面 ============ */
@@ -589,6 +695,12 @@ function refreshLock(){
   document.documentElement.classList.remove("lock-pending");
   $("lockOverlay").classList.toggle("show", !!needLock);
   if(needLock){
+    /* 一組模型都沒有時，解鎖畫面根本沒東西可解——直接給「清除密碼、重新開始」，
+       不要讓人卡在只能按「重置」的死路。 */
+    var noModels=!state.models.length;
+    $("lockForm").style.display=noModels?"none":"block";
+    $("lockNoModels").style.display=noModels?"block":"none";
+    if(noModels) return;
     var sel=$("lockModelSel"); sel.innerHTML="";
     state.models.forEach(function(m){
       var o=document.createElement("option"); o.value=m.id;
@@ -603,9 +715,26 @@ $("lockUnlockBtn").addEventListener("click", async function(){
   var id=$("lockModelSel").value, pw=$("lockPw").value;
   if(!id){ $("lockErr").textContent="沒有已儲存的模型，請先重置後重新新增。"; return; }
   if(await hashPw(pw)!==pwHash()){ $("lockErr").textContent="密碼不對，請再試一次。"; return; }
-  state.activeModelId=id; saveModels(); state.unlocked=true; $("lockPw").value="";
+  var encOK=await establishSession(pw);
+  state.activeModelId=id; state.unlocked=true; $("lockPw").value="";
+  var bad=await loadKeysFromStorage();
   refreshLock(); renderModels(); renderTryonSummary(); refreshPwSetup();
-  toast("已解鎖，使用中的模型："+(modelOf(id)?modelOf(id).modelName:""));
+  if(!encOK){
+    toast("已解鎖。這個瀏覽器不支援加密（不是 https 或太舊），金鑰只能明碼儲存。");
+  } else if(bad.length){
+    toast("已解鎖，但有 "+bad.length+" 組金鑰解不開（"+bad[0]+" 等），請重新輸入金鑰。");
+  } else {
+    toast("已解鎖，使用中的模型："+(modelOf(id)?modelOf(id).modelName:""));
+  }
+});
+$("lockStartOverBtn").addEventListener("click", function(){
+  /* 沒有任何模型時的逃生門：清掉密碼就好，照片／衣櫃／成品都在 IndexedDB，不動 */
+  localStorage.removeItem(LS_PWHASH);
+  localStorage.removeItem(LS_SALT);
+  sessionKey=null;
+  state.unlocked=true;
+  refreshLock(); renderModels(); renderTryonSummary(); refreshPwSetup();
+  toast("已清除密碼，可以直接使用了；要保護金鑰請再設定一次密碼。");
 });
 var resetArmed=false;
 $("lockResetBtn").addEventListener("click", function(){
@@ -617,6 +746,8 @@ $("lockResetBtn").addEventListener("click", function(){
   resetArmed=false; this.textContent="忘記密碼，重置模型設定";
   state.models=[]; state.activeModelId=null; saveModels();
   localStorage.removeItem(LS_PWHASH);
+  localStorage.removeItem(LS_SALT);
+  sessionKey=null;
   state.unlocked=true;
   refreshLock(); renderModels(); renderTryonSummary(); refreshPwSetup();
   toast("已重置：模型設定與密碼已清除。");
@@ -740,9 +871,12 @@ async function fetchVendorModels(v,key,acct,worker){
     (j5.result||[]).forEach(function(m){
       var task=String((m.task&&m.task.name)||"");
       if(!/Text-to-Image|Image-to-Image/i.test(task)) return;
-      var can=/Image-to-Image/i.test(task);
+      /* Cloudflare 把 flux-2-klein 這類「能吃圖片」的模型也標成 Text-to-Image，
+         光看 task 會誤判成不能試穿，所以再用型號名稱補判斷（flux／kontext／inpaint 等都會吃圖）。 */
+      var looksImageInput=/flux|kontext|klein|inpaint|image-edit|qwen/i.test(m.name) && !/schnell/i.test(m.name);
+      var can=/Image-to-Image/i.test(task) || looksImageInput;
       out5.push(discoveredMeta("cloudflare",m.name,m.name,can,"依 Cloudflare 官方計價（後台為準）",
-        can?"Image-to-Image 任務，可以拿照片去改。":"只列 Text-to-Image，可能不吃照片。"));
+        can?("可以拿照片去改（"+(/Image-to-Image/i.test(task)?"Image-to-Image 任務":"依型號判斷")+"），第一次用先試一張確認。"):"只列 Text-to-Image、型號也不像能改圖，可能不吃照片。"));
     });
     if(!out5.length) throw new Error("Cloudflare 回來的清單裡沒有生圖模型");
     return out5.sort(byModelName);
@@ -802,7 +936,7 @@ function fillModelSelect(){
     return;
   }
   $("mRefreshBtn").disabled=false;
-  sel.style.display="block"; $("mModelText").style.display="none";
+  sel.style.display="block";
   var keep=sel.value;
   sel.innerHTML="";
   var builtin=(p.models||[]).slice();
@@ -822,6 +956,9 @@ function fillModelSelect(){
     sel.appendChild(g2);
   }
   if(keep && modelMetaList(v).some(function(m){ return m.id===keep; })) sel.value=keep;
+  var needText=(v==="replicate" && sel.value==="__custom__");
+  $("mModelText").style.display=needText?"block":"none";
+  if(needText) $("mModelText").placeholder="例：black-forest-labs/flux-kontext-pro 或 cuuupid/idm-vton:abc123…";
   updateListNote(v);
   onModelChange();
 }
@@ -845,7 +982,10 @@ function onModelChange(){
   $("mModelInfo").innerHTML="每張價格：<strong>"+esc(meta.price)+"</strong>"+(meta.can?"":"　<span class='err-text'><strong>不能試穿（只能文字生圖）</strong></span>")+"<br/>"+esc(meta.note||"");
 }
 $("mVendor").addEventListener("change", fillModelSelect);
-$("mModel").addEventListener("change", onModelChange);
+$("mModel").addEventListener("change", function(){
+  /* Replicate 選到「其他模型」要把自行輸入的欄位叫出來 */
+  if($("mVendor").value==="replicate") fillModelSelect(); else onModelChange();
+});
 $("mAccount").addEventListener("input", function(){
   var meta=currentFormModelMeta(); if(!meta) return;
   var acct=$("mAccount").value.trim();
@@ -900,7 +1040,7 @@ $("mCancelEditBtn").addEventListener("click", function(){
   renderModels();
   $("mFormMsg").textContent="已取消編輯，表單沒有變更。";
 });
-$("mSaveBtn").addEventListener("click", function(){
+$("mSaveBtn").addEventListener("click", async function(){
   var v=$("mVendor").value;
   var editing=editingModelId?modelOf(editingModelId):null;
   var key=$("mKey").value.trim();
@@ -912,6 +1052,11 @@ $("mSaveBtn").addEventListener("click", function(){
     modelName=$("mModelText").value.trim();
     if(!modelName){ $("mFormMsg").innerHTML="<span class='err-text'>自訂廠商請輸入模型名稱。</span>"; return; }
     modelId=modelName;
+  } else if(v==="replicate" && $("mModel").value==="__custom__"){
+    modelName=$("mModelText").value.trim();
+    if(!modelName){ $("mFormMsg").innerHTML="<span class='err-text'>請輸入 Replicate 的模型名稱（owner/name 或 owner/name:版本號）。</span>"; return; }
+    modelId=modelName;
+    if(!/replicate\.com/.test(endpoint)) endpoint="https://api.replicate.com/v1/predictions";
   } else {
     var meta=currentFormModelMeta(); modelId=meta.id; modelName=meta.name;
   }
@@ -925,6 +1070,7 @@ $("mSaveBtn").addEventListener("click", function(){
   var worker=(v==="cloudflare")?$("mWorker").value.trim():"";
   var finalKey=key||(editing?editing.apiKey:"");
   var rec={ id:(editing?editing.id:uid()), vendor:v, customVendor:(v==="custom"?$("mCustomVendor").value.trim():""), modelId:modelId, modelName:modelName, endpoint:endpoint, accountId:acct, workerUrl:worker, apiKey:finalKey, createdAt:(editing?editing.createdAt:Date.now()) };
+  if(sessionKey){ rec.keyEnc=await encryptSecret(finalKey); }
   var wasEditing=!!editing;
   if(editing){
     var idx=state.models.findIndex(function(x){ return x.id===editing.id; });
@@ -955,7 +1101,8 @@ function renderModels(){
       "<div class='mono'>"+esc(m.endpoint)+"</div>"+
       (m.workerUrl?"<div class='kv'>Worker 代理："+esc(m.workerUrl)+"</div>":(m.vendor==="cloudflare"?"<div class='kv warn-text'>沒有 Worker 代理：從瀏覽器直呼會被 Cloudflare 擋掉</div>":""))+
       (m.accountId?"<div class='kv'>Account ID："+esc(m.accountId)+"</div>":"")+
-      "<div class='kv'>API KEY："+esc(maskKey(m.apiKey))+"</div>"+
+      "<div class='kv'>API KEY："+esc(maskKey(m.apiKey))+"　"+(m.keyEnc?"<span class='badge on'>已加密儲存</span>":"<span class='badge no'>明碼儲存</span>")+"</div>"+
+      (m.keyEnc?"":"<div class='kv warn-text'>這組金鑰是明碼存在瀏覽器裡。設定解鎖密碼之後，金鑰會自動改成密文儲存。</div>")+
       "<div style='display:flex;gap:8px;margin-top:8px;flex-wrap:wrap'>"+
       "<button class='btn small' data-act='edit'"+(m.id===editingModelId?" disabled":"")+">"+(m.id===editingModelId?"編輯中":"編輯")+"</button>"+
       (m.id===state.activeModelId?"":"<button class='btn small' data-act='use'>設為使用中</button>")+
@@ -1340,19 +1487,59 @@ async function callFal(m, images, prompt){
   throw new Error("fal.ai 等待超過 5 分鐘，已停止。請稍後再試。");
 }
 async function callReplicate(m, images, prompt){
-  var body={ input:{ prompt:prompt, image:images[0], human_img:images[0], garm_img:images[1]||images[0], garment_image:images[1]||images[0] } };
-  if(m.modelId.indexOf("/")>0 && m.modelId.split("/").length===2 && m.modelId.indexOf("idm")<0 && m.modelId.indexOf("flux")<0){ body.model=m.modelId; }
-  else if(m.modelId.indexOf("/")>0){ body.model=m.modelId; }
-  var r=await fetch(m.endpoint,{method:"POST",headers:{"Authorization":"Bearer "+m.apiKey,"Content-Type":"application/json","Prefer":"wait=55"},body:JSON.stringify(body)});
-  var j=await r.json().catch(function(){return null;});
-  if(!r.ok) throw new Error("Replicate 回應 "+r.status+"："+(j&&j.detail?String(j.detail).slice(0,240):"IDM-VTON 等專門模型需要指定版本號，若後台有要求，請改用 fal.ai 或在 Replicate 後台確認呼叫方式"));
+  /* Replicate 有兩種呼叫方式，弄錯就會 404／422：
+     ① 官方模型：POST /v1/models/{owner}/{name}/predictions，只要 input，不用版本號
+     ② 社群模型（例如 IDM-VTON）：POST /v1/predictions，必須帶 version（Version ID）
+     型號寫成 owner/name:版本號 就走第②種；只寫 owner/name 走第①種。 */
+  var raw=String(m.modelId||"").trim();
+  var version="", modelPath=raw;
+  var ci=raw.indexOf(":");
+  if(ci>0){ modelPath=raw.slice(0,ci).trim(); version=raw.slice(ci+1).trim(); }
+
+  /* 每個模型吃的欄位名稱不一樣，硬塞全部欄位會被 Replicate 以 422 打回，所以照模型種類給 */
+  var low=raw.toLowerCase(), input;
+  if(low.indexOf("idm-vton")>=0 || low.indexOf("tryon")>=0 || low.indexOf("try-on")>=0 || low.indexOf("vton")>=0){
+    input={ human_img:images[0], garm_img:images[1]||images[0], garment_des:prompt, category:"upper_body" };
+  } else if(low.indexOf("kontext")>=0){
+    input={ prompt:prompt, input_image:images[0], aspect_ratio:"match_input_image" };
+  } else if(low.indexOf("flux")>=0){
+    input={ prompt:prompt, input_image:images[0] };
+  } else {
+    input={ prompt:prompt, image:images[0] };
+  }
+
+  var url, body;
+  if(version){
+    url="https://api.replicate.com/v1/predictions";
+    body={ version:version, input:input };
+  } else if(modelPath.indexOf("/")>0){
+    url="https://api.replicate.com/v1/models/"+modelPath+"/predictions";
+    body={ input:input };
+  } else {
+    url=m.endpoint||"https://api.replicate.com/v1/predictions";
+    body={ input:input };
+  }
+
+  var r=await fetch(url,{method:"POST",headers:{"Authorization":"Bearer "+m.apiKey,"Content-Type":"application/json","Prefer":"wait=55"},body:JSON.stringify(body)});
+  var j=await r.json().catch(function(){ return null; });
+  if(!r.ok){
+    var detail=(j&&(j.detail||j.title))?String(j.detail||j.title).slice(0,240):"";
+    var hint="";
+    if(r.status===404||/version/i.test(detail)){
+      hint="　這個型號可能需要版本號：把型號改成 owner/name:版本號（版本號在 Replicate 模型頁的 API 分頁）。";
+    } else if(r.status===422){
+      hint="　這是這個模型的輸入欄位跟我們送的不一樣，多半代表它不吃這種「人物＋衣服」的用法。";
+    }
+    throw new Error("Replicate 回應 "+r.status+"："+(detail||"沒有細節")+hint);
+  }
   var getUrl=j.urls&&j.urls.get;
   var deadline=Date.now()+5*60*1000;
   while(j.status!=="succeeded"){
     if(j.status==="failed"||j.status==="canceled") throw new Error("Replicate 生成失敗："+(j.error||"未知原因"));
-    if(Date.now()>deadline) throw new Error("Replicate 等待超過 5 分鐘，已停止。");
     if(j.output) break;
-    await new Promise(function(res){setTimeout(res,3000);});
+    if(Date.now()>deadline) throw new Error("Replicate 等超過 5 分鐘，已停止。");
+    if(!getUrl) break;
+    await new Promise(function(res){ setTimeout(res,3000); });
     var sr=await fetch(getUrl,{headers:{"Authorization":"Bearer "+m.apiKey}});
     j=await sr.json();
   }
@@ -1408,9 +1595,47 @@ function renderTryonSummary(){
   var m=activeModel();
   $("tryonModelName").textContent=m?(vendorLabel(m)+"・"+m.modelName):"（尚未設定）";
   $("tryonModelPrice").textContent=m?("・"+(modelPrice(m)||"")):"";
-  if(!base && !items.length){ $("tryonSummary").textContent="尚未選底圖與衣服。"; return; }
-  $("tryonSummary").textContent="底圖："+(base?base.label:"（未選）")+"｜衣服："+(items.length?items.map(function(w){return w.name;}).join("、"):"（未選）");
+  if(!base && !items.length) $("tryonSummary").textContent="尚未選底圖與衣服。";
+  else $("tryonSummary").textContent="底圖："+(base?base.label:"（未選）")+"｜衣服："+(items.length?items.map(function(w){return w.name;}).join("、"):"（未選）");
+  renderTryonPreview(base, items);
   renderResults();
+}
+/* 送出前先把「這次會用到的每一張圖」攤開給使用者確認，可以逐件取消 */
+function renderTryonPreview(base, items){
+  var box=$("tryonPreview");
+  if(base===undefined) base=baseImageInfo();
+  if(items===undefined) items=state.wardrobe.filter(function(w){return state.selectedWardrobe[w.id];});
+  box.innerHTML="";
+  if(!base && !items.length){
+    box.style.display="none";
+    $("tryonPreviewEmpty").style.display="block";
+    $("tryonBtn").disabled=true;
+    return;
+  }
+  $("tryonPreviewEmpty").style.display="none";
+  box.style.display="flex";
+  if(base){
+    var d=document.createElement("div"); d.className="pv base";
+    var im=document.createElement("img"); im.src=base.dataUrl; im.alt="這次要用的底圖";
+    var tg=document.createElement("span"); tg.className="tag"; tg.textContent="底圖";
+    var cp=document.createElement("div"); cp.className="cap"; cp.textContent=base.label;
+    d.appendChild(im); d.appendChild(tg); d.appendChild(cp);
+    box.appendChild(d);
+  }
+  items.forEach(function(w,i){
+    var d=document.createElement("div"); d.className="pv";
+    var im=document.createElement("img"); im.src=w.dataUrl; im.alt=w.name;
+    var tg=document.createElement("span"); tg.className="tag"; tg.textContent="衣服 "+(i+1);
+    var cp=document.createElement("div"); cp.className="cap"; cp.textContent=w.name+(w.category?"（"+w.category+"）":"");
+    var rm=document.createElement("button"); rm.className="rm"; rm.type="button"; rm.title="這次不要用這一件"; rm.textContent="✕";
+    rm.addEventListener("click", function(){
+      delete state.selectedWardrobe[w.id];
+      renderWardrobe(); renderTryonSummary();
+    });
+    d.appendChild(im); d.appendChild(tg); d.appendChild(cp); d.appendChild(rm);
+    box.appendChild(d);
+  });
+  $("tryonBtn").disabled=!(base && items.length);
 }
 function renderResults(){
   var g=$("resultGrid"); g.innerHTML="";
@@ -1418,10 +1643,20 @@ function renderResults(){
   state.results.forEach(function(r){
     var card=document.createElement("div"); card.className="card";
     card.innerHTML="<div class='ph'><img alt='試穿成品'/></div><div class='bd'><div class='meta'>"+esc(r.when)+"<br/>"+esc(r.items)+"</div>"+
-      "<div class='row'><a class='linklike' data-a='dl' href='#'>下載</a><button class='linklike' data-a='view'>放大</button><button class='linklike' data-a='del' style='color:var(--err)'>刪除</button></div></div>";
-    card.querySelector("img").src=r.dataUrl;
+      "<div class='row'><a class='linklike' data-a='dl' href='#'>下載</a><button class='linklike' data-a='del' style='color:var(--err)'>刪除</button><button class='linklike' data-a='model'>模型</button></div>"+
+      "<div class='modelinfo'></div></div>";
+    var thumb=card.querySelector("img"); thumb.src=r.dataUrl;
+    thumb.title="點一下看大圖（可縮放，也能直接下載）";
+    thumb.addEventListener("click", function(){ openViewer(r.dataUrl, "tryon-"+r.id+".jpg"); });
     var dl=card.querySelector("[data-a=dl]"); dl.href=r.dataUrl; dl.setAttribute("download","tryon-"+r.id+".jpg");
-    card.querySelector("[data-a=view]").addEventListener("click", function(){ openViewer(r.dataUrl); });
+    var mi=card.querySelector(".modelinfo");
+    mi.textContent=r.vendor
+      ? ("廠商："+r.vendor+"\n模型："+r.modelName+(r.modelId&&r.modelId!==r.modelName?"（"+r.modelId+"）":"")+(r.extra?"\n補充提示詞："+r.extra:""))
+      : "這張是舊版程式生成的成品，當時沒有記錄用哪一個模型。";
+    mi.style.whiteSpace="pre-wrap";
+    card.querySelector("[data-a=model]").addEventListener("click", function(){
+      mi.style.display=(mi.style.display==="block")?"none":"block";
+    });
     card.querySelector("[data-a=del]").addEventListener("click", async function(){
       await idbDel("results",r.id);
       state.results=state.results.filter(function(x){return x.id!==r.id;});
@@ -1437,9 +1672,11 @@ async function runTryon(){
   if(!base){ toast("先選一張人物底圖（照片庫或多角度底圖）。"); return; }
   if(!items.length){ toast("先在衣櫃選 1–3 件衣服。"); return; }
   var images=[base.dataUrl].concat(items.map(function(w){return w.dataUrl;}));
+  var extra=($("tryonExtra")&&$("tryonExtra").value||"").trim();
   var prompt="Virtual try-on photo edit. The first image is the person. The following image(s) are garments. Dress the person in those garments, combining them as one outfit. Keep the person's face, hair, body shape and pose exactly the same. "+
     (base.fromAngles?"Keep the plain solid studio background.":"Keep the original background and lighting of the person's photo exactly as it is.")+
     " Photorealistic, natural fabric drape and fit.";
+  if(extra) prompt+=" Extra requirements from the user (follow these while keeping everything above): "+extra;
   $("tryonProgWrap").style.display="block"; $("tryonProg").style.width="15%";
   $("tryonStatus").textContent="準備照片並送出給 "+vendorLabel(m)+"…（階段進度）";
   $("tryonBtn").disabled=true;
@@ -1451,7 +1688,8 @@ async function runTryon(){
     var out=await generateWithActiveModel(images,prompt);
     $("tryonProg").style.width="90%"; hudSet(93,"收到回應，整理圖片中");
     var finalUrl=out.indexOf("data:")===0?out:await imageUrlToDataUrl(out).catch(function(){return out;});
-    var rec={ id:uid(), dataUrl:finalUrl, items:items.map(function(w){return w.name;}).join("、"), when:new Date().toLocaleString("zh-TW"), createdAt:Date.now() };
+    var rec={ id:uid(), dataUrl:finalUrl, items:items.map(function(w){return w.name;}).join("、"), when:new Date().toLocaleString("zh-TW"), createdAt:Date.now(),
+      vendor:vendorLabel(m), modelName:m.modelName, modelId:m.modelId, extra:extra };
     await idbPut("results",rec); state.results.unshift(rec);
     $("tryonProg").style.width="100%";
     hudFinish("完成，已存進試穿紀錄");
@@ -1738,8 +1976,9 @@ $("angleRetryBtn").addEventListener("click", function(){ runAngles(true); });
 /* ============ 全螢幕檢視器 ============ */
 var vScale=1, vX=0, vY=0, vDrag=null;
 function applyViewerTransform(){ $("vimg").style.transform="translate(-50%,-50%) translate("+vX+"px,"+vY+"px) scale("+vScale+")"; }
-function openViewer(src){
+function openViewer(src, name){
   var img=$("vimg"); img.src=src; vScale=1; vX=0; vY=0; applyViewerTransform();
+  var dl=$("vDownload"); if(dl){ dl.href=src; dl.setAttribute("download", name||"tryon.jpg"); }
   $("viewer").classList.add("show");
 }
 $("vClose").addEventListener("click", function(){ $("viewer").classList.remove("show"); });
