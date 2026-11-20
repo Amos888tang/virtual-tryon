@@ -74,6 +74,16 @@ label.fl{display:block;font-size:.9rem;color:var(--ink2);margin:10px 0 4px}
 .empty{border:1.5px dashed var(--line);border-radius:12px;padding:26px 16px;text-align:center;color:var(--ink2)}
 .progress{height:12px;background:var(--surface2);border:1px solid var(--line);border-radius:999px;overflow:hidden;margin:8px 0}
 .progress > div{height:100%;background:var(--accent);width:0%;transition:width .3s}
+/* 左上角生成進度：固定在左上，蓋在內容上但低於解鎖遮罩（60）與檢視器（80） */
+#hud{position:fixed;top:10px;left:10px;z-index:55;display:none;align-items:center;gap:10px;
+  background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:7px 14px;
+  box-shadow:var(--shadow);font-size:.9rem;color:var(--ink);max-width:calc(100vw - 24px)}
+#hud.show{display:flex}
+#hud .hl{font-family:"Noto Serif TC",serif;font-weight:700;white-space:nowrap}
+#hud .hp{font-variant-numeric:tabular-nums;color:var(--accent);font-weight:700;min-width:3.4em;text-align:right}
+#hud .hd{color:var(--ink2);font-size:.82rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#hud.done .hp{color:var(--ok)}
+@media (max-width:560px){ #hud .hd{display:none} }
 .statusline{font-size:.92rem;color:var(--ink2);min-height:1.4em}
 .err-text{color:var(--err)}
 .ok-text{color:var(--ok)}
@@ -127,6 +137,8 @@ hr.sep{border:none;border-top:1px solid var(--line);margin:16px 0}
 </script>
 </head>
 <body>
+
+<div id="hud" role="status" aria-live="polite"><span class="hl" id="hudLabel">生成中</span><span class="hp" id="hudPct">0%</span><span class="hd" id="hudDetail"></span></div>
 
 <div id="lockOverlay" role="dialog" aria-label="解鎖畫面">
   <div class="lockbox">
@@ -220,11 +232,9 @@ hr.sep{border:none;border-top:1px solid var(--line);margin:16px 0}
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
       <button class="btn primary" id="tryonBtn">開始試穿</button>
       <button class="btn" id="tryonRetryBtn" style="display:none">重試上次失敗的試穿</button>
-      <button class="btn ghost" id="diagBtn">測試連線</button>
     </div>
     <div class="progress" id="tryonProgWrap" style="display:none"><div id="tryonProg"></div></div>
     <p class="statusline" id="tryonStatus"></p>
-    <pre id="diagOut" class="mono" style="display:none;white-space:pre-wrap;background:var(--surface2);border:1px solid var(--line);border-radius:9px;padding:10px;margin-top:10px;line-height:1.6"></pre>
     <hr class="sep" />
     <h3 style="margin:0 0 8px;font-family:'Noto Serif TC',serif">試穿紀錄</h3>
     <div class="grid results" id="resultGrid"></div>
@@ -284,12 +294,19 @@ hr.sep{border:none;border-top:1px solid var(--line);margin:16px 0}
     </div>
     <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
       <button class="btn primary" id="mSaveBtn">儲存這組模型</button>
+      <button class="btn ghost" id="mCancelEditBtn" style="display:none">取消編輯</button>
     </div>
     <p id="mFormMsg" class="kv" style="min-height:1.3em"></p>
     <hr class="sep" />
     <h3 style="margin:0 0 4px;font-family:'Noto Serif TC',serif">已儲存的模型</h3>
     <div id="modelList"></div>
     <div class="empty" id="modelEmpty">還沒存任何模型。先在上面選廠商、挑模型、貼 API KEY 按儲存——存好第一組之後會請你設定解鎖密碼。</div>
+
+    <hr class="sep" />
+    <h3 style="margin:0 0 6px;font-family:'Noto Serif TC',serif">測試連線</h3>
+    <p class="kv">用「使用中的模型」實測一次：先分辨「網路根本連不到」和「瀏覽器跨域被擋」這兩種完全不同的失敗，再對真正的接口位址發一次假金鑰的請求（不會產生費用）。改完模型、或生成失敗想確認是哪一段出問題時用。</p>
+    <div style="margin-top:8px"><button class="btn" id="diagBtn">測試使用中的模型連線</button></div>
+    <pre id="diagOut" class="mono" style="display:none;white-space:pre-wrap;background:var(--surface2);border:1px solid var(--line);border-radius:9px;padding:10px;margin-top:10px;line-height:1.6"></pre>
   </section>
 
   <p class="kv" style="text-align:center;margin-top:26px">價格與免費額度資料來源：2026-11-19 查證的模型比較研究（Cloudflare 官方訂價頁、fal.ai、FASHN、各廠商文件與價格追蹤站）。價格會變動，實際以廠商帳單為準；標「未驗證」處請先在廠商後台確認再儲值。</p>
@@ -638,11 +655,54 @@ $("mAccount").addEventListener("input", function(){
   var acct=$("mAccount").value.trim();
   $("mEndpoint").value=meta.endpoint.replace("{ACCOUNT_ID}", acct||"{ACCOUNT_ID}");
 });
+var editingModelId=null;
+/* 把某一組已存模型載回上面的表單，改完按「儲存變更」就地更新（不會多出一組）。 */
+function startEditModel(id){
+  var m=modelOf(id); if(!m) return;
+  editingModelId=id;
+  $("mVendor").value=m.vendor;
+  fillModelSelect();
+  if(m.vendor==="custom"){
+    $("mModelText").value=m.modelName;
+  } else {
+    var sel=$("mModel");
+    var has=Array.prototype.some.call(sel.options, function(o){ return o.value===m.modelId; });
+    if(!has){
+      var o=document.createElement("option"); o.value=m.modelId;
+      o.textContent=m.modelName+"（清單裡沒有這個型號）";
+      sel.appendChild(o);
+    }
+    sel.value=m.modelId;
+    onModelChange();
+  }
+  $("mEndpoint").value=m.endpoint||"";
+  $("mAccount").value=m.accountId||"";
+  $("mWorker").value=m.workerUrl||"";
+  $("mCustomVendor").value=m.customVendor||"";
+  $("mKey").value="";
+  $("mKey").placeholder="留空＝沿用原本的金鑰（"+maskKey(m.apiKey)+"）";
+  $("mSaveBtn").textContent="儲存變更";
+  $("mCancelEditBtn").style.display="inline-flex";
+  $("mFormMsg").innerHTML="<span class='warn-text'>正在編輯「"+esc(vendorLabel(m)+"・"+m.modelName)+"」：改完按「儲存變更」，要改型號直接在上面換模型就好。</span>";
+  $("secModels").scrollIntoView({behavior:"smooth"});
+}
+function endEditModel(){
+  editingModelId=null;
+  $("mKey").value="";
+  $("mKey").placeholder="貼上你的 API KEY";
+  $("mSaveBtn").textContent="儲存這組模型";
+  $("mCancelEditBtn").style.display="none";
+}
+$("mCancelEditBtn").addEventListener("click", function(){
+  endEditModel();
+  $("mFormMsg").textContent="已取消編輯，表單沒有變更。";
+});
 $("mSaveBtn").addEventListener("click", function(){
   var v=$("mVendor").value;
+  var editing=editingModelId?modelOf(editingModelId):null;
   var key=$("mKey").value.trim();
   var endpoint=$("mEndpoint").value.trim();
-  if(!key){ $("mFormMsg").innerHTML="<span class='err-text'>請先貼上 API KEY。</span>"; return; }
+  if(!key && !editing){ $("mFormMsg").innerHTML="<span class='err-text'>請先貼上 API KEY。</span>"; return; }
   if(!endpoint){ $("mFormMsg").innerHTML="<span class='err-text'>接口地址是空的，請填入或重新選一次模型帶入預設值。</span>"; return; }
   var modelId, modelName;
   if(v==="custom"){
@@ -660,12 +720,20 @@ $("mSaveBtn").addEventListener("click", function(){
   }
   if(endpoint.indexOf("{MODEL}")>=0) endpoint=endpoint.replace("{MODEL}",modelId);
   var worker=(v==="cloudflare")?$("mWorker").value.trim():"";
-  var rec={ id:uid(), vendor:v, customVendor:(v==="custom"?$("mCustomVendor").value.trim():""), modelId:modelId, modelName:modelName, endpoint:endpoint, accountId:acct, workerUrl:worker, apiKey:key, createdAt:Date.now() };
-  state.models.push(rec);
-  if(!state.activeModelId) state.activeModelId=rec.id;
+  var finalKey=key||(editing?editing.apiKey:"");
+  var rec={ id:(editing?editing.id:uid()), vendor:v, customVendor:(v==="custom"?$("mCustomVendor").value.trim():""), modelId:modelId, modelName:modelName, endpoint:endpoint, accountId:acct, workerUrl:worker, apiKey:finalKey, createdAt:(editing?editing.createdAt:Date.now()) };
+  var wasEditing=!!editing;
+  if(editing){
+    var idx=state.models.findIndex(function(x){ return x.id===editing.id; });
+    if(idx>=0) state.models[idx]=rec; else state.models.push(rec);
+  } else {
+    state.models.push(rec);
+    if(!state.activeModelId) state.activeModelId=rec.id;
+  }
   saveModels();
+  endEditModel();
   $("mKey").value=""; $("mWorker").value="";
-  $("mFormMsg").innerHTML="<span class='ok-text'>已儲存："+esc(vendorLabel(rec))+"・"+esc(modelName)+"（金鑰 "+esc(maskKey(key))+"）</span>"+
+  $("mFormMsg").innerHTML="<span class='ok-text'>"+(wasEditing?"已更新：":"已儲存：")+esc(vendorLabel(rec))+"・"+esc(modelName)+"（金鑰 "+esc(maskKey(finalKey))+"）</span>"+
     (v==="cloudflare"&&!worker?"<span class='warn-text'>　注意：沒填 Worker 代理位址，從瀏覽器直呼 Cloudflare 會被跨域擋掉。</span>":"");
   if(!pwHash()) state.unlocked=true;
   renderModels(); renderTryonSummary(); refreshPwSetup(); refreshLock();
@@ -686,17 +754,21 @@ function renderModels(){
       (m.accountId?"<div class='kv'>Account ID："+esc(m.accountId)+"</div>":"")+
       "<div class='kv'>API KEY："+esc(maskKey(m.apiKey))+"</div>"+
       "<div style='display:flex;gap:8px;margin-top:8px;flex-wrap:wrap'>"+
+      "<button class='btn small' data-act='edit'"+(m.id===editingModelId?" disabled":"")+">"+(m.id===editingModelId?"編輯中":"編輯")+"</button>"+
       (m.id===state.activeModelId?"":"<button class='btn small' data-act='use'>設為使用中</button>")+
       "<button class='btn small danger' data-act='del'>刪除這組</button></div>";
     div.querySelectorAll("button").forEach(function(b){
       b.addEventListener("click", function(){
         var act=b.getAttribute("data-act");
-        if(act==="use"){
+        if(act==="edit"){
+          requirePassword("修改模型「"+m.modelName+"」的設定", function(){ startEditModel(m.id); });
+        } else if(act==="use"){
           requirePassword("切換使用中的模型為「"+m.modelName+"」", function(){
             state.activeModelId=m.id; saveModels(); renderModels(); renderTryonSummary(); toast("已切換使用中的模型。");
           });
         } else {
           requirePassword("刪除模型「"+m.modelName+"」", function(){
+            if(editingModelId===m.id) endEditModel();
             state.models=state.models.filter(function(x){return x.id!==m.id;});
             if(state.activeModelId===m.id) state.activeModelId=state.models.length?state.models[0].id:null;
             saveModels(); renderModels(); renderTryonSummary(); toast("已刪除這組模型。");
@@ -906,6 +978,44 @@ $("eSaveBtn").addEventListener("click", async function(){
   $("editModal").classList.remove("show"); editingWardrobe=null;
   renderWardrobe();
 });
+
+/* ============ 左上角生成進度 ============ */
+/* 廠商的生圖接口是一次性請求，中間不會回報進度，所以這裡的百分比是「估算」：
+   送出後慢慢往上爬、上限壓在 88% 左右，真正收到圖才跳 100%，不會騙人說快好了。
+   多角度那種一張一張跑的，就照實際完成的張數算。 */
+var hudTimer=null, hudCeil=0, hudNow=0;
+function hudShow(label, detail){
+  hudStopCreep(); hudNow=0; hudCeil=0;
+  $("hudLabel").textContent=label;
+  $("hudPct").textContent="0%";
+  $("hudDetail").textContent=detail||"";
+  $("hud").classList.remove("done"); $("hud").classList.add("show");
+}
+function hudSet(pct, detail, ceil){
+  if(typeof pct==="number") hudNow=Math.max(hudNow, Math.min(99, pct));
+  $("hudPct").textContent=Math.round(hudNow)+"%";
+  if(detail!=null) $("hudDetail").textContent=detail;
+  if(typeof ceil==="number"){
+    hudCeil=Math.min(99, ceil);
+    if(!hudTimer){
+      hudTimer=setInterval(function(){
+        if(hudNow<hudCeil){
+          hudNow=Math.min(hudCeil, hudNow+Math.max(0.35,(hudCeil-hudNow)*0.05));
+          $("hudPct").textContent=Math.round(hudNow)+"%";
+        }
+      },700);
+    }
+  }
+}
+function hudStopCreep(){ if(hudTimer){ clearInterval(hudTimer); hudTimer=null; } }
+function hudFinish(detail){
+  hudStopCreep(); hudNow=100;
+  $("hudPct").textContent="100%";
+  if(detail!=null) $("hudDetail").textContent=detail;
+  $("hud").classList.add("done");
+  setTimeout(function(){ $("hud").classList.remove("show","done"); },1600);
+}
+function hudHide(){ hudStopCreep(); $("hud").classList.remove("show","done"); }
 
 /* ============ 生圖：瀏覽器直連廠商 API ============ */
 function extractOpenAiImage(json){
@@ -1124,18 +1234,23 @@ async function runTryon(){
   $("tryonProgWrap").style.display="block"; $("tryonProg").style.width="15%";
   $("tryonStatus").textContent="準備照片並送出給 "+vendorLabel(m)+"…（階段進度）";
   $("tryonBtn").disabled=true;
+  hudShow("試穿生圖","準備照片、壓縮後送出");
+  hudSet(8);
   try{
     $("tryonProg").style.width="45%"; $("tryonStatus").textContent="已送出，等待廠商生成中…（實際時間依廠商而定）";
+    hudSet(22,"已送出，等待 "+vendorLabel(m)+" 回應",88);
     var out=await generateWithActiveModel(images,prompt);
-    $("tryonProg").style.width="90%";
+    $("tryonProg").style.width="90%"; hudSet(93,"收到回應，整理圖片中");
     var finalUrl=out.indexOf("data:")===0?out:await imageUrlToDataUrl(out).catch(function(){return out;});
     var rec={ id:uid(), dataUrl:finalUrl, items:items.map(function(w){return w.name;}).join("、"), when:new Date().toLocaleString("zh-TW"), createdAt:Date.now() };
     await idbPut("results",rec); state.results.unshift(rec);
     $("tryonProg").style.width="100%";
+    hudFinish("完成，已存進試穿紀錄");
     $("tryonStatus").innerHTML="<span class='ok-text'>完成！成品已存進試穿紀錄。</span>";
     state.lastTryonFail=null; $("tryonRetryBtn").style.display="none";
     renderResults();
   }catch(e){
+    hudHide();
     var msg=e.message||String(e);
     if(msg==="NO_MODEL"){ $("tryonStatus").innerHTML="<span class='err-text'>還沒有模型，請先到模型設定新增一組。</span>"; }
     else if(msg.indexOf("BLOCKED::")===0){ $("tryonStatus").innerHTML="<span class='err-text'>"+esc(msg.slice(9))+"</span>"; }
@@ -1355,6 +1470,7 @@ async function runAngles(onlyFails){
   $("angleProgWrap").style.display="block"; $("angleProg").style.width="0%";
   $("angleBtn").disabled=true; $("angleRetryBtn").disabled=true;
   $("angleStatus").textContent=(onlyFails?"開始重試缺的角度：共 ":"開始生成多角度：共 ")+total+" 張，完成 0/"+total+"（0%）";
+  hudShow(onlyFails?"重試缺的角度":"全身多角度底圖","0/"+total+" 張");
   renderAngleGroups();
   for(var k=0;k<jobs.length;k++){
     var job=jobs[k], a=ANGLES[job.angle];
@@ -1366,6 +1482,7 @@ async function runAngles(onlyFails){
       aborted=true; break;
     }
     var prompt="Full-body studio photo of the same person as the reference image, "+a.prompt+", standing naturally, wearing exactly the same outfit as in the reference, plain solid light-gray background, even studio lighting, photorealistic, keep the face and body identical to the reference person.";
+    hudSet(((done+0.1)/total)*100, done+"/"+total+" 張（正在生成 "+a.label+"）", ((done+0.9)/total)*100);
     try{
       var out=await generateWithActiveModel([srcPhoto.dataUrl],prompt);
       var finalUrl=out.indexOf("data:")===0?out:await imageUrlToDataUrl(out).catch(function(){return out;});
@@ -1381,6 +1498,7 @@ async function runAngles(onlyFails){
     done++;
     var pct=Math.round(done/total*100);
     $("angleProg").style.width=pct+"%";
+    hudSet(pct, done+"/"+total+" 張", ((done+0.9)/total)*100);
     $("angleStatus").textContent=(onlyFails?"重試中：完成 ":"生成多角度中：完成 ")+done+"/"+total+"（"+pct+"%）"+(fails?"，失敗 "+fails+" 張，之後可以只補這幾張":"");
     renderAngleGroups();
   }
@@ -1401,6 +1519,8 @@ async function runAngles(onlyFails){
   }else{
     $("angleStatus").innerHTML="<span class='err-text'>這次沒有任何一組四張齊全（失敗 "+fails+" 張）。已生成的圖都留著，按「重試失敗的角度」只補缺的那幾張；也可以換一組模型再試。</span>";
   }
+  if(!aborted && !fails) hudFinish(done+"/"+total+" 張");
+  else hudHide();
   setTimeout(function(){ $("angleProgWrap").style.display="none"; $("angleProg").style.width="0%"; },1200);
 }
 $("angleBtn").addEventListener("click", function(){ runAngles(false); });
