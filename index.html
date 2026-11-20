@@ -90,10 +90,13 @@ label.fl{display:block;font-size:.9rem;color:var(--ink2);margin:10px 0 4px}
 .progress{height:12px;background:var(--surface2);border:1px solid var(--line);border-radius:999px;overflow:hidden;margin:8px 0}
 .progress > div{height:100%;background:var(--accent);width:0%;transition:width .3s}
 /* 左上角生成進度：固定在左上，蓋在內容上但低於解鎖遮罩（60）與檢視器（80） */
-#hud{position:fixed;top:10px;left:10px;z-index:55;display:none;align-items:center;gap:10px;
+#hud{display:none;align-items:center;gap:10px;
   background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:7px 14px;
-  box-shadow:var(--shadow);font-size:.9rem;color:var(--ink);max-width:calc(100vw - 24px)}
-#hud.show{display:flex}
+  box-shadow:var(--shadow);font-size:.9rem;color:var(--ink);max-width:100%}
+#hud.show{display:inline-flex}
+/* 進度膠囊放在按鈕列裡，跟按鈕留一點距離；手機上換行時就落到下一行，不會擋住按鈕 */
+.hudslot{display:inline-flex;align-items:center;margin-left:6px}
+@media (max-width:560px){ #hud{font-size:.86rem;padding:6px 12px} }
 #hud .hl{font-family:"Noto Serif TC",serif;font-weight:700;white-space:nowrap}
 #hud .hp{font-variant-numeric:tabular-nums;color:var(--accent);font-weight:700;min-width:3.4em;text-align:right}
 #hud .hd{color:var(--ink2);font-size:.82rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -274,6 +277,7 @@ hr.sep{border:none;border-top:1px solid var(--line);margin:16px 0}
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
       <button class="btn primary" id="tryonBtn">開始試穿</button>
       <button class="btn" id="tryonRetryBtn" style="display:none">重試上次失敗的試穿</button>
+      <span class="hudslot" id="tryonHudSlot"></span>
     </div>
     <div class="progress" id="tryonProgWrap" style="display:none"><div id="tryonProg"></div></div>
     <p class="statusline" id="tryonStatus"></p>
@@ -289,6 +293,7 @@ hr.sep{border:none;border-top:1px solid var(--line);margin:16px 0}
     <div style="display:flex;gap:8px;flex-wrap:wrap">
       <button class="btn primary" id="angleBtn">生成 3 組多角度底圖</button>
       <button class="btn" id="angleRetryBtn" style="display:none">重試失敗的角度</button>
+      <span class="hudslot" id="angleHudSlot"></span>
     </div>
     <div class="progress" id="angleProgWrap" style="display:none"><div id="angleProg"></div></div>
     <p class="statusline" id="angleStatus"></p>
@@ -1374,7 +1379,13 @@ $("eSaveBtn").addEventListener("click", async function(){
    送出後慢慢往上爬、上限壓在 88% 左右，真正收到圖才跳 100%，不會騙人說快好了。
    多角度那種一張一張跑的，就照實際完成的張數算。 */
 var hudTimer=null, hudCeil=0, hudNow=0;
-function hudShow(label, detail){
+/* 進度膠囊跟著「這次按的是哪顆鈕」跑：試穿就貼在開始試穿右邊，多角度就貼在那排按鈕右邊 */
+function hudMount(slotId){
+  var slot=$(slotId||"tryonHudSlot"), hud=$("hud");
+  if(slot && hud && hud.parentNode!==slot) slot.appendChild(hud);
+}
+function hudShow(label, detail, slotId){
+  hudMount(slotId);
   hudStopCreep(); hudNow=0; hudCeil=0;
   $("hudLabel").textContent=label;
   $("hudPct").textContent="0%";
@@ -1953,7 +1964,7 @@ async function runAngles(onlyFails){
   $("angleProgWrap").style.display="block"; $("angleProg").style.width="0%";
   $("angleBtn").disabled=true; $("angleRetryBtn").disabled=true;
   $("angleStatus").textContent=(onlyFails?"開始重試缺的角度：共 ":"開始生成多角度：共 ")+total+" 張，完成 0/"+total+"（0%）";
-  hudShow(onlyFails?"重試缺的角度":"全身多角度底圖","0/"+total+" 張");
+  hudShow(onlyFails?"重試缺的角度":"全身多角度底圖","0/"+total+" 張","angleHudSlot");
   renderAngleGroups();
   for(var k=0;k<jobs.length;k++){
     var job=jobs[k], a=ANGLES[job.angle];
