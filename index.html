@@ -207,9 +207,11 @@ hr.sep{border:none;border-top:1px solid var(--line);margin:16px 0}
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
       <button class="btn primary" id="tryonBtn">開始試穿</button>
       <button class="btn" id="tryonRetryBtn" style="display:none">重試上次失敗的試穿</button>
+      <button class="btn ghost" id="diagBtn">測試連線</button>
     </div>
     <div class="progress" id="tryonProgWrap" style="display:none"><div id="tryonProg"></div></div>
     <p class="statusline" id="tryonStatus"></p>
+    <pre id="diagOut" class="mono" style="display:none;white-space:pre-wrap;background:var(--surface2);border:1px solid var(--line);border-radius:9px;padding:10px;margin-top:10px;line-height:1.6"></pre>
     <hr class="sep" />
     <h3 style="margin:0 0 8px;font-family:'Noto Serif TC',serif">試穿紀錄</h3>
     <div class="grid results" id="resultGrid"></div>
@@ -1066,6 +1068,75 @@ async function runTryon(){
 }
 $("tryonBtn").addEventListener("click", runTryon);
 $("tryonRetryBtn").addEventListener("click", runTryon);
+
+/* ============ 連線自我檢測 ============ */
+/* 用來分辨「網路根本連不到」和「瀏覽器跨域 CORS 擋掉」這兩種完全不同的失敗。
+   先用 no-cors 測連線層（不受跨域限制），再用帶 Authorization 的 cors 請求測跨域。 */
+function diagProbe(url, opts){
+  var t0=Date.now(), ctrl=window.AbortController?new AbortController():null;
+  var o={cache:"no-store"};
+  if(opts) for(var k in opts) o[k]=opts[k];
+  if(ctrl) o.signal=ctrl.signal;
+  var timer=setTimeout(function(){ if(ctrl) ctrl.abort(); },8000);
+  return fetch(url,o).then(function(r){
+    clearTimeout(timer);
+    return { ok:true, status:r.status, ms:Date.now()-t0 };
+  },function(e){
+    clearTimeout(timer);
+    var msg=(e&&e.name==="AbortError")?"8 秒內沒有回應":((e&&e.message)||String(e));
+    return { ok:false, err:msg, ms:Date.now()-t0 };
+  });
+}
+function diagFmt(r){ return r.ok?("OK（HTTP "+r.status+"，"+(r.ms/1000).toFixed(1)+" 秒）"):("失敗："+r.err+"（"+(r.ms/1000).toFixed(1)+" 秒）"); }
+$("diagBtn").addEventListener("click", async function(){
+  var out=$("diagOut"), m=activeModel();
+  out.style.display="block";
+  var head="頁面來源（Origin）："+location.origin+"\n"+
+    "使用中的模型："+(m?(vendorLabel(m)+"・"+m.modelName):"（沒有）")+"\n";
+  out.textContent=head+"\n測試中…（每項最多等 8 秒）";
+  var hosts=[
+    { label:"Cloudflare", url:"https://api.cloudflare.com/client/v4/" },
+    { label:"Google（Gemini）", url:"https://generativelanguage.googleapis.com/v1beta/models" },
+    { label:"OpenAI", url:"https://api.openai.com/v1/models" }
+  ];
+  if(m&&m.endpoint){
+    try{
+      var o=new URL(m.endpoint);
+      if(!hosts.some(function(h){ return o.origin.indexOf(h.label)===0 || h.url.indexOf(o.origin)===0; })) hosts.push({ label:"目前使用中的接口", url:o.origin+"/" });
+    }catch(e){}
+  }
+  var lines=[head], netOK=0, netFail=0, corsOK=0, corsFail=0;
+  for(var i=0;i<hosts.length;i++){
+    var h=hosts[i];
+    var net=await diagProbe(h.url,{mode:"no-cors"});
+    var cors=await diagProbe(h.url,{mode:"cors",headers:{"Authorization":"Bearer probe"}});
+    if(net.ok) netOK++; else netFail++;
+    if(cors.ok) corsOK++; else corsFail++;
+    lines.push("── "+h.label);
+    lines.push("   "+h.url);
+    lines.push("   連線層（不受跨域限制）："+diagFmt(net));
+    lines.push("   跨域請求（帶 Authorization）："+diagFmt(cors));
+    lines.push("");
+    out.textContent=lines.join("\n")+"\n測試中…";
+  }
+  if(m&&m.endpoint){
+    var auth=(m.vendor==="fal")?{Authorization:"Key probe"}:{Authorization:"Bearer probe"};
+    var fd=new FormData(); fd.append("prompt","probe");
+    var ep=await diagProbe(m.endpoint,{method:"POST",headers:auth,body:fd});
+    lines.push("── 實際接口探測（故意用假金鑰，不會產生費用）");
+    lines.push("   "+m.endpoint);
+    lines.push("   "+(ep.ok?("有回應（HTTP "+ep.status+"），代表網址和跨域都通，換上真金鑰就會成功"):("失敗："+ep.err)));
+    lines.push("");
+  }
+  var verdict;
+  if(netFail>0&&netOK===0) verdict="結論：連線層就斷了（防火牆、Proxy 或 DNS 擋住），不是程式的問題。請換網路（例如手機熱點）再測一次。";
+  else if(corsFail>0&&corsOK===0) verdict="結論：網路沒問題，是瀏覽器的跨域（CORS）把請求擋掉。靜態版沒辦法繞過 CORS，需要換成允許瀏覽器直呼的廠商，或另外架一個小代理。";
+  else if(corsFail>0) verdict="結論：部分廠商跨域被擋、部分可以。請用打勾的那家。";
+  else verdict="結論：連線與跨域都正常，問題比較可能在金鑰、接口地址或請求內容。";
+  lines.push(verdict);
+  lines.push("（把這段文字截圖給我就可以判斷）");
+  out.textContent=lines.join("\n");
+});
 
 /* ============ 多角度 ============ */
 /* 每次生成先把 3 組「草稿」寫進 IndexedDB：images 是長度 4 的陣列，缺的格子留 null。
