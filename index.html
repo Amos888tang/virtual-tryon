@@ -336,10 +336,10 @@ var PROVIDERS = {
     { id: "@cf/black-forest-labs/flux-1-schnell", name: "FLUX.1 [schnell]", price: "約 $0.0019/張（免費約 57 張/天）", can: false, endpoint: "https://api.cloudflare.com/client/v4/accounts/{ACCOUNT_ID}/ai/run/@cf/black-forest-labs/flux-1-schnell", note: "只能文字生圖、沒有圖片輸入，不能試穿。選它當使用中時，生成會被擋下。" }
   ]},
   gemini: { label: "Gemini（Google）", models: [
-    { id: "gemini-3.1-flash-lite-image", name: "Nano Banana 2 Lite（gemini-3.1-flash-lite-image）", price: "$0.0336/張", can: true, endpoint: "https://generativelanguage.googleapis.com/v1beta/openai/images/edits", note: "Nano Banana 系列最便宜的一代。Gemini API 的生圖模型沒有免費額度，要綁結算帳戶才會出圖；在中國連不上 Google API。" },
-    { id: "gemini-2.5-flash-image", name: "Nano Banana（gemini-2.5-flash-image）", price: "$0.039/張", can: true, endpoint: "https://generativelanguage.googleapis.com/v1beta/openai/images/edits", note: "原版 Nano Banana，通用改圖品質好；已有停用時間說法不一，新用途建議用 2 Lite。" },
-    { id: "gemini-3.1-flash-image", name: "Nano Banana 2（gemini-3.1-flash-image）", price: "$0.067/張", can: true, endpoint: "https://generativelanguage.googleapis.com/v1beta/openai/images/edits", note: "較新一代，價格較高。" },
-    { id: "gemini-3-pro-image", name: "Nano Banana Pro（gemini-3-pro-image）", price: "$0.134/張", can: true, endpoint: "https://generativelanguage.googleapis.com/v1beta/openai/images/edits", note: "系列裡最貴、品質最高的一檔。" }
+    { id: "gemini-3.1-flash-lite-image", name: "Nano Banana 2 Lite（gemini-3.1-flash-lite-image）", price: "$0.0336/張", can: true, endpoint: "https://generativelanguage.googleapis.com/v1beta/models/{MODEL}:generateContent", note: "Nano Banana 系列最便宜的一代。Gemini API 的生圖模型沒有免費額度，要綁結算帳戶才會出圖；在中國連不上 Google API。" },
+    { id: "gemini-2.5-flash-image", name: "Nano Banana（gemini-2.5-flash-image）", price: "$0.039/張", can: true, endpoint: "https://generativelanguage.googleapis.com/v1beta/models/{MODEL}:generateContent", note: "原版 Nano Banana，通用改圖品質好；已有停用時間說法不一，新用途建議用 2 Lite。" },
+    { id: "gemini-3.1-flash-image", name: "Nano Banana 2（gemini-3.1-flash-image）", price: "$0.067/張", can: true, endpoint: "https://generativelanguage.googleapis.com/v1beta/models/{MODEL}:generateContent", note: "較新一代，價格較高。" },
+    { id: "gemini-3-pro-image", name: "Nano Banana Pro（gemini-3-pro-image）", price: "$0.134/張", can: true, endpoint: "https://generativelanguage.googleapis.com/v1beta/models/{MODEL}:generateContent", note: "系列裡最貴、品質最高的一檔。" }
   ]},
   openai: { label: "OpenAI", models: [
     { id: "gpt-image-1", name: "GPT Image 1（gpt-image-1）", price: "依 OpenAI 官方計費（研究報告未單列 OpenAI 直連價）", can: true, endpoint: "https://api.openai.com/v1/images/edits", note: "走 OpenAI 相容的 /v1/images/edits。研究報告裡的 GPT Image 2 是經 OpenRouter 的實測價 $0.006–0.014/張，與直連計費不同；在中國連不上 OpenAI API。" },
@@ -477,6 +477,16 @@ function loadSettings(){
   state.activeModelId=localStorage.getItem(LS_ACTIVE)||null;
   if(state.activeModelId && !state.models.some(function(m){return m.id===state.activeModelId;})) state.activeModelId=null;
   if(!state.activeModelId && state.models.length) state.activeModelId=null;
+  /* 舊版把 Gemini 指向 /v1beta/openai/images/edits，那條路徑不是給瀏覽器用的生圖接口，
+     實測會被跨域擋掉。已存的設定直接遷移到原生的 :generateContent。 */
+  var migrated=false;
+  state.models.forEach(function(m){
+    if(m.vendor==="gemini" && (!m.endpoint || m.endpoint.indexOf("/openai/images/edits")>=0)){
+      m.endpoint="https://generativelanguage.googleapis.com/v1beta/models/"+m.modelId+":generateContent";
+      migrated=true;
+    }
+  });
+  if(migrated) saveModels();
 }
 function saveModels(){ localStorage.setItem(LS_MODELS, JSON.stringify(state.models)); if(state.activeModelId) localStorage.setItem(LS_ACTIVE,state.activeModelId); else localStorage.removeItem(LS_ACTIVE); }
 function pwHash(){ return localStorage.getItem(LS_PWHASH)||null; }
@@ -593,6 +603,7 @@ function fillModelSelect(){
 function onModelChange(){
   var meta=currentFormModelMeta(); if(!meta) return;
   var ep=meta.endpoint;
+  if(ep.indexOf("{MODEL}")>=0) ep=ep.replace("{MODEL}", $("mModel").value);
   var acct=$("mAccount").value.trim();
   if(ep.indexOf("{ACCOUNT_ID}")>=0 && acct) ep=ep.replace("{ACCOUNT_ID}",acct);
   $("mEndpoint").value=ep;
@@ -625,6 +636,7 @@ $("mSaveBtn").addEventListener("click", function(){
     if(!acct){ $("mFormMsg").innerHTML="<span class='err-text'>Cloudflare 需要 Account ID，請一併填寫。</span>"; return; }
     endpoint=endpoint.replace("{ACCOUNT_ID}",acct);
   }
+  if(endpoint.indexOf("{MODEL}")>=0) endpoint=endpoint.replace("{MODEL}",modelId);
   var rec={ id:uid(), vendor:v, customVendor:(v==="custom"?$("mCustomVendor").value.trim():""), modelId:modelId, modelName:modelName, endpoint:endpoint, accountId:acct, apiKey:key, createdAt:Date.now() };
   state.models.push(rec);
   if(!state.activeModelId) state.activeModelId=rec.id;
@@ -905,6 +917,39 @@ async function callOpenAiCompatible(m, images, prompt){
   if(out) return out;
   throw new Error("廠商有回應，但裡面沒有圖片（可能此模型／接口不支援圖片編輯）。");
 }
+/* Gemini 原生生圖：POST /v1beta/models/{model}:generateContent，圖片用 inline_data 夾帶、金鑰用 ?key=。
+   舊的 /v1beta/openai/images/edits 從瀏覽器呼叫會被跨域擋掉（2026-11-20 使用者實機診斷確認）。 */
+function dataUrlToInline(d){
+  var mm=/^data:([^;]+);base64,(.*)$/.exec(String(d||""));
+  if(mm) return { mime_type:mm[1], data:mm[2] };
+  return { mime_type:"image/jpeg", data:String(d||"").split(",")[1]||"" };
+}
+async function callGemini(m, images, prompt){
+  var url=m.endpoint||"";
+  if(url.indexOf("{MODEL}")>=0) url=url.replace("{MODEL}", m.modelId);
+  if(!url || url.indexOf("/openai/")>=0){
+    url="https://generativelanguage.googleapis.com/v1beta/models/"+m.modelId+":generateContent";
+  }
+  url+=(url.indexOf("?")>=0?"&":"?")+"key="+encodeURIComponent(m.apiKey);
+  var parts=[{text:prompt}];
+  for(var i=0;i<images.length;i++) parts.push({inline_data:dataUrlToInline(images[i])});
+  var r=await fetch(url,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({contents:[{role:"user",parts:parts}]})});
+  var j=await r.json().catch(function(){return null;});
+  if(!r.ok){
+    var msg=j&&j.error?(j.error.message||JSON.stringify(j.error)):"請確認金鑰、模型名稱與接口地址";
+    throw new Error("Gemini 回應 "+r.status+"："+String(msg).slice(0,240));
+  }
+  var cand=j&&j.candidates&&j.candidates[0];
+  var ps=(cand&&cand.content&&cand.content.parts)||[];
+  for(var k=0;k<ps.length;k++){
+    var inl=ps[k].inlineData||ps[k].inline_data;
+    if(inl&&inl.data) return "data:"+(inl.mimeType||inl.mime_type||"image/png")+";base64,"+inl.data;
+  }
+  var pf=j&&j.promptFeedback;
+  if(pf&&pf.blockReason) throw new Error("Gemini 把這個請求擋下來了（"+pf.blockReason+"），可能被安全政策攔阻。");
+  if(cand&&cand.finishReason&&cand.finishReason!=="STOP") throw new Error("Gemini 沒有回傳圖片（finishReason："+cand.finishReason+"），可能被安全政策攔阻，或這個模型不支援拿照片改圖。");
+  throw new Error("Gemini 有回應，但裡面沒有圖片資料（這個模型可能不支援圖片輸出）。");
+}
 async function callOpenRouter(m, images, prompt){
   var body={ model:m.modelId, prompt:prompt, images:images.map(function(d){return {image_url:{url:d}};}) };
   var r=await fetch(m.endpoint,{method:"POST",headers:{"Authorization":"Bearer "+m.apiKey,"Content-Type":"application/json"},body:JSON.stringify(body)});
@@ -965,6 +1010,7 @@ async function generateWithActiveModel(images, prompt){
   if(!m) throw new Error("NO_MODEL");
   if(!modelCanTryOn(m)) throw new Error("BLOCKED::"+vendorLabel(m)+" 的「"+m.modelName+"」只能文字生圖、不能拿照片試穿，所以沒有送出（不會扣錢）。請到模型設定換一組能試穿的模型，例如 Cloudflare FLUX.2 [klein] 4B 或 fal.ai 的 FASHN。");
   try{
+    if(m.vendor==="gemini") return await callGemini(m,images,prompt);
     if(m.vendor==="cloudflare") return await callCloudflare(m,images,prompt);
     if(m.vendor==="fal") return await callFal(m,images,prompt);
     if(m.vendor==="replicate") return await callReplicate(m,images,prompt);
