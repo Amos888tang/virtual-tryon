@@ -77,6 +77,7 @@ label.fl{display:block;font-size:.9rem;color:var(--ink2);margin:10px 0 4px}
 .statusline{font-size:.92rem;color:var(--ink2);min-height:1.4em}
 .err-text{color:var(--err)}
 .ok-text{color:var(--ok)}
+.warn-text{color:var(--warn)}
 .model-item{border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin:10px 0;background:var(--surface)}
 .model-item.active{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-soft)}
 .mono{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:.85rem;word-break:break-all}
@@ -96,6 +97,9 @@ label.fl{display:block;font-size:.9rem;color:var(--ink2);margin:10px 0 4px}
 /* lock overlay */
 #lockOverlay{position:fixed;inset:0;background:var(--bg);z-index:60;display:none;overflow:auto}
 #lockOverlay.show{display:block}
+/* 開頁當下（JS 還沒跑完）就已經確定要上鎖時，先把畫面蓋住，避免內容先閃一下才被遮住 */
+html.lock-pending #lockOverlay{display:block}
+html.lock-pending body{overflow:hidden}
 .lockbox{max-width:440px;margin:8vh auto;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:24px;box-shadow:var(--shadow)}
 /* viewer */
 #viewer{position:fixed;inset:0;background:rgba(10,8,6,.94);z-index:80;display:none;flex-direction:column}
@@ -112,6 +116,15 @@ label.fl{display:block;font-size:.9rem;color:var(--ink2);margin:10px 0 4px}
 .kv{font-size:.9rem;color:var(--ink2)}
 hr.sep{border:none;border-top:1px solid var(--line);margin:16px 0}
 </style>
+<script>
+/* 這段要比頁面內容更早跑：只要使用者設過密碼，就先把解鎖畫面掛上，
+   不然底下的照片、模型清單會先閃一下才被遮住（等 JS 跑完才遮就太晚了）。 */
+(function(){
+  try{
+    if(localStorage.getItem("tryonStatic.pwHash.v1")) document.documentElement.classList.add("lock-pending");
+  }catch(e){}
+})();
+</script>
 </head>
 <body>
 
@@ -261,6 +274,11 @@ hr.sep{border:none;border-top:1px solid var(--line);margin:16px 0}
       <div class="full"><p class="kv" id="mModelInfo" style="margin:2px 0 0"></p></div>
       <div class="full"><label class="fl" for="mEndpoint">接口地址（依模型自動帶入，可手動改）</label><input type="url" id="mEndpoint" /></div>
       <div id="mAccountWrap" style="display:none"><label class="fl" for="mAccount">Cloudflare Account ID</label><input type="text" id="mAccount" placeholder="Cloudflare 帳號 ID" /></div>
+      <div class="full" id="mWorkerWrap" style="display:none">
+        <label class="fl" for="mWorker">Worker 代理位址（Cloudflare 建議填，不填會失敗）</label>
+        <input type="url" id="mWorker" placeholder="https://你的worker.你的帳號.workers.dev/" />
+        <p class="kv" style="margin:4px 0 0">Cloudflare 的 API 不接受瀏覽器直接呼叫（跨域被擋），要透過你自己部署的 Worker 轉一手。留空就是直接呼叫，會出現 Failed to fetch。</p>
+      </div>
       <div><label class="fl" for="mKey">API KEY</label><input type="password" id="mKey" autocomplete="off" placeholder="貼上你的 API KEY" /></div>
       <div id="mCustomVendorWrap" style="display:none"><label class="fl" for="mCustomVendor">自訂廠商名稱</label><input type="text" id="mCustomVendor" placeholder="例：我的中轉站" /></div>
     </div>
@@ -537,6 +555,9 @@ $("pwSetBtn").addEventListener("click", async function(){
 function refreshLock(){
   var has=pwHash();
   var needLock=has && !state.unlocked;
+  /* 開頁時 <head> 那段先加的 lock-pending 在這裡交接給 .show：
+     同一個執行週期內完成，畫面不會有中間的空檔。 */
+  document.documentElement.classList.remove("lock-pending");
   $("lockOverlay").classList.toggle("show", !!needLock);
   if(needLock){
     var sel=$("lockModelSel"); sel.innerHTML="";
@@ -590,6 +611,7 @@ function fillModelSelect(){
   var sel=$("mModel");
   $("mCustomVendorWrap").style.display=(v==="custom")?"block":"none";
   $("mAccountWrap").style.display=(p && p.needsAccount)?"block":"none";
+  $("mWorkerWrap").style.display=(v==="cloudflare")?"block":"none";
   if(v==="custom"){
     sel.style.display="none"; $("mModelText").style.display="block";
     $("mModelInfo").textContent="自訂廠商：自己填模型名稱與接口地址。生成時會用 OpenAI 相容的 /images/edits 方式呼叫（multipart，Authorization: Bearer）。";
@@ -637,12 +659,14 @@ $("mSaveBtn").addEventListener("click", function(){
     endpoint=endpoint.replace("{ACCOUNT_ID}",acct);
   }
   if(endpoint.indexOf("{MODEL}")>=0) endpoint=endpoint.replace("{MODEL}",modelId);
-  var rec={ id:uid(), vendor:v, customVendor:(v==="custom"?$("mCustomVendor").value.trim():""), modelId:modelId, modelName:modelName, endpoint:endpoint, accountId:acct, apiKey:key, createdAt:Date.now() };
+  var worker=(v==="cloudflare")?$("mWorker").value.trim():"";
+  var rec={ id:uid(), vendor:v, customVendor:(v==="custom"?$("mCustomVendor").value.trim():""), modelId:modelId, modelName:modelName, endpoint:endpoint, accountId:acct, workerUrl:worker, apiKey:key, createdAt:Date.now() };
   state.models.push(rec);
   if(!state.activeModelId) state.activeModelId=rec.id;
   saveModels();
-  $("mKey").value="";
-  $("mFormMsg").innerHTML="<span class='ok-text'>已儲存："+esc(vendorLabel(rec))+"・"+esc(modelName)+"（金鑰 "+esc(maskKey(key))+"）</span>";
+  $("mKey").value=""; $("mWorker").value="";
+  $("mFormMsg").innerHTML="<span class='ok-text'>已儲存："+esc(vendorLabel(rec))+"・"+esc(modelName)+"（金鑰 "+esc(maskKey(key))+"）</span>"+
+    (v==="cloudflare"&&!worker?"<span class='warn-text'>　注意：沒填 Worker 代理位址，從瀏覽器直呼 Cloudflare 會被跨域擋掉。</span>":"");
   if(!pwHash()) state.unlocked=true;
   renderModels(); renderTryonSummary(); refreshPwSetup(); refreshLock();
 });
@@ -658,6 +682,7 @@ function renderModels(){
       (can?"":"<span class='badge no'>不能試穿</span>")+"</div>"+
       "<div class='kv'>每張價格："+esc(modelPrice(m)||"—")+"</div>"+
       "<div class='mono'>"+esc(m.endpoint)+"</div>"+
+      (m.workerUrl?"<div class='kv'>Worker 代理："+esc(m.workerUrl)+"</div>":(m.vendor==="cloudflare"?"<div class='kv warn-text'>沒有 Worker 代理：從瀏覽器直呼會被 Cloudflare 擋掉</div>":""))+
       (m.accountId?"<div class='kv'>Account ID："+esc(m.accountId)+"</div>":"")+
       "<div class='kv'>API KEY："+esc(maskKey(m.apiKey))+"</div>"+
       "<div style='display:flex;gap:8px;margin-top:8px;flex-wrap:wrap'>"+
@@ -897,11 +922,22 @@ async function callCloudflare(m, images, prompt){
     var small=await resizeDataUrl(images[i],512);
     fd.append("input_image_"+i, dataUrlToBlob(small), "input_"+i+".jpg");
   }
-  var r=await fetch(m.endpoint,{method:"POST",headers:{"Authorization":"Bearer "+m.apiKey},body:fd});
+  var target=m.endpoint;
+  if(m.workerUrl){
+    /* 透過自己部署的 Worker 轉一手：Worker 在伺服器端去打 api.cloudflare.com（伺服器之間沒有跨域限制），
+       再把回應加上 CORS 標頭回給瀏覽器。金鑰一樣由瀏覽器帶過去，Worker 不儲存。 */
+    var base=String(m.workerUrl).replace(/\/+$/,"");
+    target=base+"/?account="+encodeURIComponent(m.accountId||"")+"&model="+encodeURIComponent(m.modelId||"");
+  }
+  var r=await fetch(target,{method:"POST",headers:{"Authorization":"Bearer "+m.apiKey},body:fd});
   var ct=r.headers.get("content-type")||"";
   if(ct.indexOf("image/")===0){ return await blobToDataUrl(await r.blob()); }
   var j=await r.json().catch(function(){return null;});
-  if(!r.ok) throw new Error("Cloudflare 回應 "+r.status+"："+(j&&j.errors?JSON.stringify(j.errors).slice(0,200):"請確認 Token、Account ID 與模型是否正確"));
+  if(!r.ok){
+    var detail=j&&j.errors?JSON.stringify(j.errors).slice(0,200):"";
+    if(m.workerUrl&&!detail) detail="Worker 代理沒有正確回應，請確認 Worker 已部署、網址正確，而且頁面來源在 Worker 的白名單裡";
+    throw new Error("Cloudflare 回應 "+r.status+"："+(detail||"請確認 Token、Account ID 與模型是否正確"));
+  }
   var img=j&&j.result&&(j.result.image||j.result.images&&j.result.images[0]);
   if(img) return img.indexOf("data:")===0?img:"data:image/png;base64,"+img;
   throw new Error("Cloudflare 有回應，但裡面沒有圖片資料。");
@@ -1151,6 +1187,12 @@ $("diagBtn").addEventListener("click", async function(){
       if(!hosts.some(function(h){ return o.origin.indexOf(h.label)===0 || h.url.indexOf(o.origin)===0; })) hosts.push({ label:"目前使用中的接口", url:o.origin+"/" });
     }catch(e){}
   }
+  if(m&&m.vendor==="cloudflare"&&m.workerUrl){
+    /* 有設定 Worker 就改測 Worker，不用再測 Cloudflare 本體（本體一定被擋，會誤導判斷） */
+    var wbase=String(m.workerUrl).replace(/\/+$/,"")+"/";
+    hosts=hosts.filter(function(h){ return h.url.indexOf("api.cloudflare.com")!==0; });
+    hosts.unshift({ label:"Cloudflare（經你的 Worker 代理）", url:wbase });
+  }
   var lines=[head], netOK=0, netFail=0, corsOK=0, corsFail=0;
   for(var i=0;i<hosts.length;i++){
     var h=hosts[i];
@@ -1168,9 +1210,13 @@ $("diagBtn").addEventListener("click", async function(){
   if(m&&m.endpoint){
     var auth=(m.vendor==="fal")?{Authorization:"Key probe"}:{Authorization:"Bearer probe"};
     var fd=new FormData(); fd.append("prompt","probe");
-    var ep=await diagProbe(m.endpoint,{method:"POST",headers:auth,body:fd});
+    var probeUrl=m.endpoint;
+    if(m.vendor==="cloudflare"&&m.workerUrl){
+      probeUrl=String(m.workerUrl).replace(/\/+$/,"")+"/?account="+encodeURIComponent(m.accountId||"")+"&model="+encodeURIComponent(m.modelId||"");
+    }
+    var ep=await diagProbe(probeUrl,{method:"POST",headers:auth,body:fd});
     lines.push("── 實際接口探測（故意用假金鑰，不會產生費用）");
-    lines.push("   "+m.endpoint);
+    lines.push("   "+(probeUrl!==m.endpoint?("經 Worker 代理："+probeUrl):probeUrl));
     lines.push("   "+(ep.ok?("有回應（HTTP "+ep.status+"），代表網址和跨域都通，換上真金鑰就會成功"):("失敗："+ep.err)));
     lines.push("");
   }
