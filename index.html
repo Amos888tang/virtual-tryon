@@ -296,7 +296,7 @@ hr.sep{border:none;border-top:1px solid var(--line);margin:16px 0}
       <input type="file" id="photoReplaceFile" accept="image/*" hidden />
       <button class="btn danger" id="photoDeleteBtn">刪除目前這張</button>
     </div>
-    <p class="kv" style="margin-top:10px">照片庫 <span id="photoCount">0</span> / 15 張（可多選上傳，每張可逐張刪除）</p>
+    <p class="kv" style="margin-top:10px">照片庫 <span id="photoCount">0</span> 張（可多選上傳，每張可逐張刪除）</p>
     <div class="grid photos" id="photoGrid"></div>
   </section>
 
@@ -1404,7 +1404,6 @@ function renderPhotos(){
 $("photoUpload").addEventListener("change", async function(){
   var files=Array.prototype.slice.call(this.files||[]); this.value="";
   for(var i=0;i<files.length;i++){
-    if(state.photos.length>=15){ toast("照片庫已滿（15 張），先刪掉一些再上傳。"); break; }
     try{
       var d=await fileToDataUrl(files[i],1600);
       var rec={id:uid(), dataUrl:d, createdAt:Date.now(), fp:await dataUrlFingerprint(d)};
