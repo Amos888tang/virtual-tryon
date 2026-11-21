@@ -3071,15 +3071,19 @@ async function syncNow(opts){
     (remote.blobs||[]).forEach(function(b){ rblobs[b.kind+"|"+b.id]=b; });
     var list=remote.items||[];
     for(var i=0;i<list.length;i++) await applyRemoteItem(list[i]);
-    var local=localSyncItems(), push=[], blobJobs=[];
+    var local=localSyncItems(), push=[], blobJobs=[], blobSeen={};
     local.forEach(function(it){
       if(it.kind==="settings" && !it.updatedAt) return;         /* 沒動過模型就不用推 */
       var r=rmap[it.kind+"|"+it.id];
-      if(!r || (it.updatedAt||0)>(r.updatedAt||0)){
-        push.push(it);
-        if(it.data && it.data.hasImg){
-          var rec=findRec(it.kind,it.id);
-          if(rec && rec.dataUrl) blobJobs.push({kind:it.kind,id:it.id,dataUrl:rec.dataUrl});
+      if(!r || (it.updatedAt||0)>(r.updatedAt||0)) push.push(it);
+      /* 自癒：本地有圖、雲端卻沒有 blob 記錄的，無論文字有沒有變更都補傳。
+         不然之前「關頁只推文字沒推圖」的洞會讓雲端有 hasImg 卻沒圖檔，別台就看不到圖。 */
+      if(it.data && it.data.hasImg){
+        var key=it.kind+"|"+it.id;
+        var rec=findRec(it.kind,it.id);
+        if(rec && rec.dataUrl && !rblobs[key] && !blobSeen[key]){
+          blobSeen[key]=true;
+          blobJobs.push({kind:it.kind,id:it.id,dataUrl:rec.dataUrl});
         }
       }
     });
