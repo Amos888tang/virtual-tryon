@@ -1398,7 +1398,18 @@ function renderPhotos(){
       if(state.selectedPhotoId===p.id) state.selectedPhotoId=state.photos.length?state.photos[0].id:null;
       renderPhotos(); renderTryonSummary();
     });
-    wrap.appendChild(b); wrap.appendChild(del); g.appendChild(wrap);
+    /* 標記這張是「4 角度合一」的全身多視角圖：試穿時會把 4 個角度都換上衣服 */
+    var mv=document.createElement("button"); mv.type="button";
+    mv.textContent=p.multiView?"✓ 4視角":"4視角";
+    mv.title="標記為「4 角度合一」的全身多視角圖（試穿時 4 個角度都會換上衣服）";
+    mv.style.cssText="position:absolute;bottom:4px;left:4px;font-size:.72rem;padding:2px 8px;border-radius:999px;border:1px solid var(--line);background:"+(p.multiView?"var(--accent)":"var(--surface)")+";color:"+(p.multiView?"var(--accent-ink)":"var(--ink2)")+";z-index:2;cursor:pointer";
+    mv.addEventListener("click", function(e){
+      e.stopPropagation();
+      p.multiView=!p.multiView;
+      idbPut("photos",p,{internal:true});
+      renderPhotos(); renderTryonSummary();
+    });
+    wrap.appendChild(b); wrap.appendChild(del); wrap.appendChild(mv); g.appendChild(wrap);
   });
 }
 $("photoUpload").addEventListener("change", async function(){
@@ -1873,7 +1884,7 @@ function baseImageInfo(){
     if(g && groupComplete(g)) return { dataUrl:g.images[0], label:(g.label||"多角度底圖")+"（正面）", fromAngles:true };
   }
   var p=selectedPhoto();
-  if(p) return { dataUrl:p.dataUrl, label:"人物照片", fromAngles:false };
+  if(p) return { dataUrl:p.dataUrl, label:"人物照片", fromAngles:false, multiView:!!p.multiView };
   return null;
 }
 /* ============ 補圖參考照 ============ */
@@ -2085,7 +2096,9 @@ async function runTryon(){
      上衣與下身都換到底圖那個人身上（不是只換一件單品）。
      有補圖參考照時（第二張），只拿它補底圖缺的手腳／下半身與比例，不抄它的衣服與背景。 */
   /* FLUX.2 klein 對「保臉」遵從度有限，指令要簡短、命令式，反覆強調臉不能動 */
-  var prompt="Virtual try-on photo edit. The first image is the person. Keep the face IDENTICAL — do not change, redraw or alter the face, facial features, expression, skin tone or hair. Keep the same body shape and posture. "+
+  var prompt="Virtual try-on photo edit. "+
+    (base.multiView?"The first image shows the same person in multiple different angles. Apply the outfit to that person in every angle of the image, keeping each angle's pose and the same face in every angle. ":"The first image is the person. ")+
+    "Keep the face IDENTICAL — do not change, redraw or alter the face, facial features, expression, skin tone or hair. Keep the same body shape and posture. "+
     (ref?("Use the second image only as a body reference to fill in missing legs, feet, hands or lower body; do not copy its clothes, face or pose. "):"")+
     (refChoice==="none-strict"?"Do not draw or fill in any body parts that are not visible in the first image — keep the same framing and crop, do not add legs, feet or lower body if they were not in the photo. ":"")+
     "Take only the clothes from each wardrobe reference image and put them on this person as one complete outfit. Never change the person's face, head or skin. "+
