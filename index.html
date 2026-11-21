@@ -428,7 +428,7 @@ hr.sep{border:none;border-top:1px solid var(--line);margin:16px 0}
       <button class="btn small" id="syncNowBtn">立即同步</button>
       <button class="btn small ghost" id="syncBaseBtn">設定同步伺服器</button>
       <button class="btn small" id="rescueBtn">找回這台裝置的資料</button>
-      <button class="btn small" id="recoverPhotosBtn">從雲端救回照片</button>
+      <button class="btn small" id="recoverPhotosBtn">從雲端救回資料（照片／衣櫃／成品）</button>
       <button class="btn small danger" id="clearLocalBtn">清除本機資料</button>
       <span class="kv" id="syncStatus">沒有設定同步伺服器（只用本機）</span>
     </div>
@@ -3017,25 +3017,34 @@ async function recoverPhotosFromCloud(){
   $("recoverPhotosBtn").disabled=true; $("recoverPhotosBtn").textContent="救回中…";
   try{
     var remote=await apiFetch("/api/sync");
-    var blobs=(remote.blobs||[]).filter(function(b){ return b.kind==="photos"; });
-    if(!blobs.length){ toast("雲端沒有可救回的照片（照片本體不在雲端）。"); return; }
-    var n=0, miss=0;
+    var kinds={photos:1,wardrobe:1,results:1};
+    var blobs=(remote.blobs||[]).filter(function(b){ return kinds[b.kind]; });
+    if(!blobs.length){ toast("雲端沒有可救回的資料（照片本體不在雲端）。"); return; }
+    var n=0, miss=0, counts={photos:0,wardrobe:0,results:0};
     for(var i=0;i<blobs.length;i++){
       var b=blobs[i];
       var d=await downloadBlob(b.kind,b.id);
       if(!d){ miss++; continue; }
-      var rec={ id:b.id, dataUrl:d, label:"救回照片 "+(n+1), createdAt:Date.now(), updatedAt:Date.now() };
-      await idbPut("photos",rec,{internal:true});
-      var idx=state.photos.findIndex(function(x){return x.id===b.id;});
-      if(idx>=0) state.photos[idx]=rec; else state.photos.push(rec);
-      n++;
+      var rec;
+      if(b.kind==="photos"){
+        rec={ id:b.id, dataUrl:d, label:"救回照片 "+(n+1), createdAt:Date.now(), updatedAt:Date.now() };
+      } else if(b.kind==="wardrobe"){
+        rec={ id:b.id, dataUrl:d, name:"救回衣櫃 "+(n+1), category:"其他", createdAt:Date.now(), updatedAt:Date.now() };
+      } else {
+        rec={ id:b.id, dataUrl:d, items:"（救回的成品）", when:new Date().toLocaleString("zh-TW"), createdAt:Date.now(), updatedAt:Date.now() };
+      }
+      await idbPut(b.kind,rec,{internal:true});
+      var arr=stateArrayOf(b.kind);
+      var idx=arr?arr.findIndex(function(x){return x.id===b.id;}):-1;
+      if(idx>=0) arr[idx]=rec; else if(arr) arr.push(rec);
+      counts[b.kind]++; n++;
     }
-    state.photos.sort(function(a,b){return (a.createdAt||0)-(b.createdAt||0);});
-    renderPhotos(); renderTryonSummary();
-    toast("已從雲端救回 "+n+" 張照片"+(miss?("（"+miss+" 張抓不到）"):"")+"，名稱先標「救回照片」，請自行補。");
+    if(state.photos) state.photos.sort(function(a,b){return (a.createdAt||0)-(b.createdAt||0);});
+    renderAll();
+    toast("已從雲端救回：照片 "+counts.photos+"、衣櫃 "+counts.wardrobe+"、成品 "+counts.results+(miss?("（"+miss+" 張抓不到）"):"")+"。名稱先標「救回…」，請自行補分類與名稱。");
     scheduleSync();
   }finally{
-    $("recoverPhotosBtn").disabled=false; $("recoverPhotosBtn").textContent="從雲端救回照片";
+    $("recoverPhotosBtn").disabled=false; $("recoverPhotosBtn").textContent="從雲端救回資料（照片／衣櫃／成品）";
   }
 }
 $("rescueBannerBtn").addEventListener("click", function(){ rescueLocalData().catch(function(e){ toast("找回失敗："+(e.message||e)); }); });
