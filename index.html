@@ -3017,9 +3017,13 @@ async function recoverPhotosFromCloud(){
   $("recoverPhotosBtn").disabled=true; $("recoverPhotosBtn").textContent="救回中…";
   try{
     var remote=await apiFetch("/api/sync");
+    var allBlobs=remote.blobs||[];
+    var stat={photos:0,wardrobe:0,results:0,angleGroups:0};
+    allBlobs.forEach(function(b){ if(b.kind in stat) stat[b.kind]++; });
+    setSyncStatus("雲端照片本體：照片 "+stat.photos+"、衣櫃 "+stat.wardrobe+"、成品 "+stat.results+"、多角度 "+stat.angleGroups+" 張");
     var kinds={photos:1,wardrobe:1,results:1};
-    var blobs=(remote.blobs||[]).filter(function(b){ return kinds[b.kind]; });
-    if(!blobs.length){ toast("雲端沒有可救回的資料（照片本體不在雲端）。"); return; }
+    var blobs=allBlobs.filter(function(b){ return kinds[b.kind]; });
+    if(!blobs.length){ toast("雲端沒有可救回的照片本體（照片／衣櫃／成品都是空的）。"); return; }
     var n=0, miss=0, counts={photos:0,wardrobe:0,results:0};
     for(var i=0;i<blobs.length;i++){
       var b=blobs[i];
