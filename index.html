@@ -193,6 +193,7 @@ hr.sep{border:none;border-top:1px solid var(--line);margin:16px 0}
     <p id="authErr" class="err-text" style="min-height:1.3em"></p>
     <button class="btn primary" id="authGoBtn" style="width:100%">登入</button>
     <p class="kv" style="margin-top:10px"><button class="linklike" id="authSwitchBtn">還沒帳號？建立一個</button></p>
+    <p class="kv" style="font-size:.85rem;margin-top:6px" id="authHint">第一次用雲端、或昨天只用過本機帳號的話，請按上面的「建立一個」用同一組 Email 重建，本機資料會一起搬上去。</p>
     <p class="kv" style="font-size:.85rem;margin-top:12px">每次開啟都要重新登入；同一台裝置換人使用時，上一個人的資料會立刻從畫面清掉。換手機或電腦請用第 6 節的備份檔搬過去。忘記密碼沒有救回機制。</p>
   </div>
 </div>
@@ -2446,39 +2447,80 @@ function logoutAccount(){
 }
 $("authSwitchBtn").addEventListener("click", function(){ setAuthMode(authMode==="login"?"register":"login"); });
 $("logoutBtn").addEventListener("click", function(){ logoutAccount(); toast("已登出，換人使用請用自己的帳號登入。"); });
+function authBusy(on,label){
+  var b=$("authGoBtn");
+  b.disabled=!!on;
+  b.textContent=on?(label||"處理中…"):(authMode==="login"?"登入":"建立並登入");
+}
+function authFail(msg){
+  $("authErr").textContent=msg;
+  toast(msg);   /* 手機上表單可能要往下捲，錯誤也用浮動提示講一次 */
+}
+function localAccByEmail(email){
+  var e=String(email||"").toLowerCase();
+  return loadAccounts().find(function(a){ return a.email.toLowerCase()===e; })||null;
+}
+/* 雲端沒有這個帳號、但這台裝置有同 Email 的本機帳號：問一下要不要用它把資料搬上雲 */
+async function upgradeLocalToCloud(email,pw,acc){
+  var okTo=confirm("雲端上還沒有「"+email+"」這個帳號。\n\n這台裝置有同一個 Email 的本機紀錄，要用同一組密碼在雲端建立帳號，並把本機的照片、衣櫃、成品、多角度與模型一起搬上去嗎？");
+  if(!okTo){
+    $("authErr").textContent="沒有搬上雲端。若這是你第一次用雲端，請按下面「還沒帳號？建立一個」用同一個 Email 重新建立（本機資料會一起帶上去）。";
+    return false;
+  }
+  await cloudRegister(email,pw);
+  try{ localStorage.setItem("tryonStatic.lastLocalUser.v1", acc.id); }catch(e){}
+  await startCloudSession(pw);
+  try{ localStorage.setItem("tryonStatic.lastEmail.v1", email); }catch(e){}
+  return true;
+}
 async function submitAuth(){
   var email=$("authEmail").value.trim(), pw=$("authPw").value;
   $("authErr").textContent="";
-  if(!email){ $("authErr").textContent="請填 Email。"; return; }
-  if(!pw){ $("authErr").textContent="請填密碼。"; return; }
-  $("authGoBtn").disabled=true;
+  if(!email){ authFail("請填 Email。"); return; }
+  if(!pw){ authFail("請填密碼。"); return; }
+  var base=($("authSyncBase")&&$("authSyncBase").value||"").trim();
+  if(base!==syncBase()) setSyncBase(base);
+  var register=(authMode==="register");
+  if(register && pw!==$("authPw2").value){ authFail("兩次輸入的密碼不一樣。"); return; }
+
+  authBusy(true, register?"建立中…（要幾秒）":"登入中…（要幾秒）");
   try{
-    var base=($("authSyncBase")&&$("authSyncBase").value||"").trim();
-    if(base!==syncBase()) setSyncBase(base);
     if(syncEnabled()){
-      if(authMode==="register"){
-        if(pw!==$("authPw2").value){ $("authErr").textContent="兩次輸入的密碼不一樣。"; $("authGoBtn").disabled=false; return; }
+      if(register){
         await cloudRegister(email,pw);
       } else {
-        await cloudLogin(email,pw);
+        try{
+          await cloudLogin(email,pw);
+        }catch(e){
+          var msg=(e&&e.message)||String(e);
+          var localAcc=localAccByEmail(email);
+          if(/雲端沒有這個帳號/.test(msg) && localAcc){
+            authBusy(false);
+            if(await upgradeLocalToCloud(email,pw,localAcc)) return;
+            return;
+          }
+          if(/連不到同步伺服器/.test(msg) && localAcc){
+            /* 網路或跨域不通：先讓這個人用本機帳號進去，資料不會不見 */
+            var acc2=await loginAccount(email,pw);
+            await startUserSession(acc2,pw);
+            toast("連不到雲端，先用本機帳號登入；稍後可在第 6 節按「立即同步」再試。");
+            return;
+          }
+          throw e;
+        }
       }
       await startCloudSession(pw);
       try{ localStorage.setItem("tryonStatic.lastEmail.v1", email); }catch(e){}
     } else {
-      var acc;
-      if(authMode==="register"){
-        if(pw!==$("authPw2").value){ $("authErr").textContent="兩次輸入的密碼不一樣。"; $("authGoBtn").disabled=false; return; }
-        acc=await createAccount(email,pw);
-      } else {
-        acc=await loginAccount(email,pw);
-      }
+      var acc=register? await createAccount(email,pw) : await loginAccount(email,pw);
       await startUserSession(acc,pw);
       try{ localStorage.setItem("tryonStatic.lastEmail.v1", email); }catch(e){}
     }
   }catch(e){
-    $("authErr").textContent=e.message||String(e);
+    authFail((e&&e.message)||String(e));
+  }finally{
+    authBusy(false);
   }
-  $("authGoBtn").disabled=false;
 }
 $("authGoBtn").addEventListener("click", submitAuth);
 $("authPw").addEventListener("keydown", function(e){ if(e.key==="Enter") submitAuth(); });
