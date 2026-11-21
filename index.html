@@ -421,6 +421,7 @@ hr.sep{border:none;border-top:1px solid var(--line);margin:16px 0}
     <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:4px 0 10px">
       <button class="btn small" id="syncNowBtn">立即同步</button>
       <button class="btn small ghost" id="syncBaseBtn">設定同步伺服器</button>
+      <button class="btn small" id="rescueBtn">找回這台裝置的資料</button>
       <span class="kv" id="syncStatus">沒有設定同步伺服器（只用本機）</span>
     </div>
     <p class="kv">備份檔一律用你自己設的密碼整包加密（PBKDF2＋AES-GCM），裡面含 API 金鑰與全部照片，請當成私密檔案保管。要匯入別人的衣櫃與模型：請對方把備份檔傳給你，在這裡選檔後由<strong>對方在你這台裝置輸入他的密碼</strong>，匯入完成程式會立刻清掉密碼欄位。</p>
@@ -2594,6 +2595,59 @@ async function cloudLogin(email,pw){
   syncToken=r.token; state.userId=r.userId; state.accountEmail=r.email;
   sessionKey=await deriveKeyFromHexSalt(pw,r.encSalt);
 }
+async function dataInventory(){
+  var inv={}, mineTotal=0, allTotal=0;
+  for(var i=0;i<SYNC_STORES.length;i++){
+    var k=SYNC_STORES[i], rows=await idbAll(k);
+    var mine=rows.filter(function(x){return x.owner===state.userId;}).length;
+    inv[k]={total:rows.length,mine:mine};
+    allTotal+=rows.length; mineTotal+=mine;
+  }
+  var ms=rawModels();
+  inv.models={total:ms.length,mine:ms.filter(function(m){return m.owner===state.userId;}).length};
+  allTotal+=ms.length; mineTotal+=inv.models.mine;
+  inv.orphan=allTotal-mineTotal;
+  return inv;
+}
+async function hintOrphanData(){
+  if(!state.userId) return;
+  try{
+    var inv=await dataInventory();
+    if(inv.orphan>0) toast("注意：這台裝置還有 "+inv.orphan+" 筆資料不屬於目前帳號（可能是之前本機帳號的）。要找回請到第 6 節按「找回這台裝置的資料」。");
+  }catch(e){}
+}
+/* 使用者按下去才會把「這台裝置上不屬於目前帳號」的資料全部收進目前帳號（會逐筆確認數量） */
+async function rescueLocalData(){
+  if(!state.userId){ toast("請先登入再按這個。"); return; }
+  var inv=await dataInventory();
+  if(!inv.orphan){ toast("沒有需要找回的資料：這台裝置的資料都已經屬於目前帳號。"); return; }
+  var msg="這台裝置的資料庫裡還有 "+inv.orphan+" 筆資料不屬於目前帳號：\n\n"+
+    "照片 "+inv.photos.total+"（屬於你 "+inv.photos.mine+"）\n"+
+    "衣櫃 "+inv.wardrobe.total+"（屬於你 "+inv.wardrobe.mine+"）\n"+
+    "成品 "+inv.results.total+"（屬於你 "+inv.results.mine+"）\n"+
+    "多角度 "+inv.angleGroups.total+"（屬於你 "+inv.angleGroups.mine+"）\n"+
+    "模型 "+inv.models.total+"（屬於你 "+inv.models.mine+"）\n\n"+
+    "要把這些全部收進「"+state.accountEmail+"」並上傳到雲端嗎？（如果這台裝置有別人也在用，請先確認）";
+  if(!confirm(msg)) return;
+  var n=0;
+  for(var i=0;i<SYNC_STORES.length;i++){
+    var k=SYNC_STORES[i], rows=await idbAll(k);
+    for(var j=0;j<rows.length;j++){
+      if(rows[j].owner===state.userId) continue;
+      rows[j].owner=state.userId; rows[j].updatedAt=Date.now();
+      await idbPut(k,rows[j],{internal:true}); n++;
+    }
+  }
+  var all=rawModels(), changed=false;
+  all.forEach(function(m){ if(m.owner!==state.userId){ m.owner=state.userId; changed=true; n++; } });
+  if(changed){ localStorage.setItem(LS_MODELS, JSON.stringify(all)); setModelsUpdatedAt(Date.now()); }
+  await loadUserData();
+  if(sessionKey) await loadKeysFromStorage();
+  renderAll();
+  toast("已找回 "+n+" 筆資料，正在上傳到雲端…");
+  if(syncEnabled() && syncToken) await syncNow({silent:true});
+  setSyncStatus("已找回 "+n+" 筆，並同步完成");
+}
 function renderAll(){
   renderPhotos(); renderWardrobe(); renderResults(); renderAngleGroups(); renderModels();
   renderTryonSummary(); refreshPwSetup();
@@ -2716,6 +2770,7 @@ function scheduleSync(){
   syncTimer=setTimeout(function(){ syncNow({silent:true}); }, 1500);
 }
 $("syncNowBtn").addEventListener("click", function(){ syncNow({}); });
+$("rescueBtn").addEventListener("click", function(){ rescueLocalData().catch(function(e){ toast("找回失敗："+(e.message||e)); }); });
 $("syncBaseBtn").addEventListener("click", function(){
   var v=prompt("貼上同步伺服器網址（例：https://tryon-sync.你的帳號.workers.dev）\n留空按確定＝清除，只用本機。", syncBase());
   if(v===null) return;
@@ -2724,9 +2779,7 @@ $("syncBaseBtn").addEventListener("click", function(){
 });
 async function adoptLocalIntoCloud(){
   /* 換成雲端帳號時，這台裝置原本（本機帳號或沒有帳號時）的資料不要變孤兒：
-     第一次登入這個雲端帳號時，把它們改成這個帳號的，之後就會同步上去。 */
-  var key="tryonStatic.cloudAdopt."+state.userId;
-  try{ if(localStorage.getItem(key)) return 0; }catch(e){}
+     每次登入都檢查一次（重複執行不會有副作用），把它們改成這個帳號的，之後就會同步上去。 */
   var lastLocal=""; try{ lastLocal=localStorage.getItem("tryonStatic.lastLocalUser.v1")||""; }catch(e){}
   var n=0;
   for(var i=0;i<SYNC_STORES.length;i++){
@@ -2742,7 +2795,6 @@ async function adoptLocalIntoCloud(){
   var all=rawModels(), changed=false;
   all.forEach(function(m){ if(!m.owner || (lastLocal && m.owner===lastLocal)){ m.owner=state.userId; changed=true; n++; } });
   if(changed){ localStorage.setItem(LS_MODELS, JSON.stringify(all)); setModelsUpdatedAt(Date.now()); }
-  try{ localStorage.setItem(key,"1"); }catch(e){}
   return n;
 }
 async function startCloudSession(pw){
@@ -2758,6 +2810,7 @@ async function startCloudSession(pw){
   renderAll(); refreshSyncStatus();
   if(setupNeeded()) openSetup();
   toast("已登入並同步："+state.accountEmail+(moved?("（已把這台裝置原本的 "+moved+" 筆資料搬進雲端帳號）"):""));
+  hintOrphanData();
 }
 
 /* ============ 備份、匯出與匯入 ============ */
