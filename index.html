@@ -470,6 +470,7 @@ hr.sep{border:none;border-top:1px solid var(--line);margin:16px 0}
       <button class="btn small ghost" id="syncBaseBtn">設定同步伺服器</button>
       <button class="btn small" id="rescueBtn">找回這台裝置的資料</button>
       <button class="btn small" id="recoverPhotosBtn">從雲端救回資料（照片／衣櫃／成品）</button>
+      <button class="btn small ghost" id="testBlobsBtn">測試雲端圖檔</button>
       <button class="btn small danger" id="clearLocalBtn">清除本機資料</button>
       <button class="btn small danger" id="deleteAccountBtn">刪除帳戶</button>
       <span class="kv" id="syncStatus">沒有設定同步伺服器（只用本機）</span>
@@ -2984,11 +2985,17 @@ function blobToDataUrl(blob){
   });
 }
 async function downloadBlob(kind,id){
-  try{
-    var res=await fetch(syncBase()+"/api/blob/"+kind+"/"+id,{headers:{Authorization:"Bearer "+syncToken}});
-    if(!res.ok) return null;
-    return await blobToDataUrl(await res.blob());
-  }catch(e){ return null; }
+  for(var attempt=0;attempt<2;attempt++){
+    try{
+      var ctrl=typeof AbortController!=="undefined"?new AbortController():null;
+      var timer=ctrl?setTimeout(function(){ ctrl.abort(); },30000):null;
+      var res=await fetch(syncBase()+"/api/blob/"+kind+"/"+id,{headers:{Authorization:"Bearer "+syncToken},signal:ctrl?ctrl.signal:undefined});
+      if(timer) clearTimeout(timer);
+      if(!res.ok) return null;
+      return await blobToDataUrl(await res.blob());
+    }catch(e){ if(attempt===1) return null; }
+  }
+  return null;
 }
 function dataUrlToBytes(u){
   var m=/^data:([^;,]*)(;base64)?,/.exec(u||""); if(!m) return null;
@@ -3044,7 +3051,14 @@ async function applyRemoteItem(it){
   }
   /* 本機這筆在垃圾桶、時間又比 remote 新：表示 remote 還沒收到刪除，先別把它復活 */
   if(tIdx>=0 && (state.trash[tIdx].rec.updatedAt||0)>(it.updatedAt||0)) return;
-  if(idx>=0 && (arr[idx].updatedAt||0)>=(it.updatedAt||0) && !arr[idx].deletedAt) return;
+  if(idx>=0 && (arr[idx].updatedAt||0)>=(it.updatedAt||0) && !arr[idx].deletedAt){
+    /* 文字已經同步過、但圖上次沒抓下來（dataUrl 空）→ 補下載，別讓它永遠空白 */
+    if(it.data && it.data.hasImg && !arr[idx].dataUrl){
+      var d0=await downloadBlob(it.kind,it.id);
+      if(d0){ arr[idx].dataUrl=d0; await idbPut(it.kind,arr[idx],{internal:true}); }
+    }
+    return;
+  }
   var rec=Object.assign({},it.data||{});
   delete rec.hasImg; delete rec.deletedAt;
   rec.id=it.id; rec.owner=state.userId; rec.updatedAt=it.updatedAt||0;
@@ -3130,6 +3144,29 @@ function scheduleSync(){
 $("syncNowBtn").addEventListener("click", function(){ syncNow({}); });
 $("rescueBtn").addEventListener("click", function(){ rescueLocalData().catch(function(e){ toast("找回失敗："+(e.message||e)); }); });
 $("recoverPhotosBtn").addEventListener("click", function(){ recoverPhotosFromCloud().catch(function(e){ toast("救回失敗："+(e.message||e)); }); });
+$("testBlobsBtn").addEventListener("click", function(){ testCloudBlobs().catch(function(e){ toast("測試失敗："+(e.message||e)); }); });
+
+/* 診斷：直接逐張抓雲端圖檔，看是不是下載層的問題 */
+async function testCloudBlobs(){
+  if(!syncEnabled()||!syncToken){ toast("要先登入雲端帳號。"); return; }
+  setSyncStatus("測試雲端圖檔中…");
+  var remote=await apiFetch("/api/sync");
+  var blobs=remote.blobs||[];
+  if(!blobs.length){ setSyncStatus("雲端沒有任何圖檔記錄", "err-text"); return; }
+  var ok=0, fail=0, firstErr="";
+  for(var i=0;i<blobs.length;i++){
+    var b=blobs[i];
+    try{
+      var res=await fetch(syncBase()+"/api/blob/"+b.kind+"/"+b.id,{headers:{Authorization:"Bearer "+syncToken}});
+      if(!res.ok){ fail++; if(!firstErr) firstErr="HTTP "+res.status+"（"+b.kind+"/"+b.id+"）"; continue; }
+      var blob=await res.blob();
+      if(!blob || blob.size<10){ fail++; if(!firstErr) firstErr="圖檔是空的（"+b.kind+"/"+b.id+"）"; continue; }
+      ok++;
+    }catch(e){ fail++; if(!firstErr) firstErr=(e.message||String(e))+"（"+b.kind+"/"+b.id+"）"; }
+  }
+  setSyncStatus("雲端圖檔測試：成功 "+ok+" / 失敗 "+fail+" 張"+(firstErr?"　第一個錯誤："+firstErr:""));
+  toast("雲端圖檔測試完成：成功 "+ok+"、失敗 "+fail+" 張。");
+}
 $("clearLocalBtn").addEventListener("click", function(){ clearLocalData().catch(function(e){ toast("清除失敗："+(e.message||e)); }); });
 $("deleteAccountBtn").addEventListener("click", function(){ deleteAccount().catch(function(e){ toast("刪除失敗："+(e.message||e)); }); });
 $("forgotPwBtn").addEventListener("click", function(){ if(!syncEnabled()){ toast("純本機模式沒有雲端密碼，無法重設。"); return; } $("resetEmail").value=$("authEmail").value||""; $("resetErr").textContent=""; $("resetStep1").style.display="block"; $("resetStep2").style.display="none"; $("resetPwModal").classList.add("show"); });
