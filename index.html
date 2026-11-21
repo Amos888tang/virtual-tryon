@@ -430,6 +430,7 @@ hr.sep{border:none;border-top:1px solid var(--line);margin:16px 0}
       <button class="btn small" id="rescueBtn">找回這台裝置的資料</button>
       <span class="kv" id="syncStatus">沒有設定同步伺服器（只用本機）</span>
     </div>
+    <p class="kv" id="dataLine" style="margin:0 0 10px">這台裝置的資料：計算中…</p>
     <p class="kv">備份檔一律用你自己設的密碼整包加密（PBKDF2＋AES-GCM），裡面含 API 金鑰與全部照片，請當成私密檔案保管。要匯入別人的衣櫃與模型：請對方把備份檔傳給你，在這裡選檔後由<strong>對方在你這台裝置輸入他的密碼</strong>，匯入完成程式會立刻清掉密碼欄位。</p>
   </section>
 
@@ -522,6 +523,7 @@ hr.sep{border:none;border-top:1px solid var(--line);margin:16px 0}
     <p class="kv" style="margin:8px 0 0;font-size:.85rem">之後每次開啟都要先選模型、輸入這組密碼才能用；金鑰會加密儲存在這個瀏覽器裡。忘記密碼只能重置模型設定（照片、衣櫃、成品都不會被刪）。</p>
     <p id="suErr" class="err-text" style="min-height:1.3em"></p>
     <button class="btn primary" id="suGoBtn" style="width:100%">儲存並開始使用</button>
+    <p style="margin:10px 0 0"><button class="btn ghost" id="suSkipBtn" style="width:100%">稍後再設定模型（先去看同步與資料狀況）</button></p>
   </div>
 </div>
 
@@ -2623,6 +2625,16 @@ async function cloudLogin(email,pw){
   syncToken=r.token; state.userId=r.userId; state.accountEmail=r.email;
   sessionKey=await deriveKeyFromHexSalt(pw,r.encSalt);
 }
+async function renderDataLine(){
+  var el=$("dataLine"); if(!el) return;
+  try{
+    var inv=await dataInventory();
+    el.textContent="這台裝置的資料：照片 "+inv.photos.total+"（屬於你 "+inv.photos.mine+"）、衣櫃 "+
+      inv.wardrobe.total+"（屬於你 "+inv.wardrobe.mine+"）、成品 "+inv.results.total+"（屬於你 "+inv.results.mine+
+      "）、多角度 "+inv.angleGroups.total+"（屬於你 "+inv.angleGroups.mine+"）、模型 "+inv.models.total+"（屬於你 "+
+      inv.models.mine+"）"+(inv.orphan>0?("　← 有 "+inv.orphan+" 筆不屬於目前帳號"):"");
+  }catch(e){ el.textContent="這台裝置的資料：讀不到（瀏覽器不支援 IndexedDB？）"; }
+}
 async function dataInventory(){
   var inv={}, mineTotal=0, allTotal=0;
   for(var i=0;i<SYNC_STORES.length;i++){
@@ -2677,7 +2689,7 @@ async function rescueLocalData(){
   if(changed){ localStorage.setItem(LS_MODELS, JSON.stringify(all)); setModelsUpdatedAt(Date.now()); }
   await loadUserData();
   if(sessionKey) await loadKeysFromStorage();
-  renderAll();
+  renderAll(); renderDataLine();
   showRescueBanner(0);
   toast("已找回 "+n+" 筆資料，正在上傳到雲端…");
   if(syncEnabled() && syncToken) await syncNow({silent:true});
@@ -2790,7 +2802,7 @@ async function syncNow(opts){
     for(var p=0;p<push.length;p+=100) await apiFetch("/api/sync",{method:"POST",json:{items:push.slice(p,p+100)},keepalive:!!opts.flush});
     if(!opts.flush) for(var b=0;b<blobJobs.length;b++) await uploadBlob(blobJobs[b].kind,blobJobs[b].id,blobJobs[b].dataUrl);
     if(push.length) saveTombs([]);
-    renderAll();
+    renderAll(); renderDataLine();
     setSyncStatus("上次同步："+new Date().toLocaleTimeString("zh-TW")+"（上傳 "+push.length+"、圖片 "+blobJobs.length+"）");
   }catch(e){
     var msg=(e&&e.status===401)?"登入已過期，請重新登入":(e.message||String(e));
@@ -2864,7 +2876,7 @@ async function startCloudSession(pw){
   document.documentElement.classList.remove("auth-pending");
   $("whoWrap").style.display="inline"; $("whoami").textContent=state.accountEmail;
   $("authPw").value=""; $("authPw2").value=""; $("authErr").textContent="";
-  renderAll(); refreshSyncStatus(); startAutoSync();
+  renderAll(); refreshSyncStatus(); startAutoSync(); renderDataLine();
   if(setupNeeded()) openSetup();
   toast("已登入並同步："+state.accountEmail+(moved?("（已把這台裝置原本的 "+moved+" 筆資料搬進雲端帳號）"):""));
   hintOrphanData();
@@ -3074,6 +3086,12 @@ function suNeedsModelText(){
   return v==="custom" || (v==="replicate" && $("suModel").value==="__custom__");
 }
 $("suPullBtn").addEventListener("click", function(){ pullFromCloud(); });
+$("suSkipBtn").addEventListener("click", function(){
+  $("setupModal").classList.remove("show");
+  toast("沒有模型時還不能生成，但可以先到第 6 節看資料狀況、按「立即同步」。");
+  try{ $("secBackup").scrollIntoView({behavior:"smooth",block:"start"}); }catch(e){}
+  renderDataLine();
+});
 $("suVendor").addEventListener("change", syncSetupModels);
 $("suModel").addEventListener("change", function(){
   $("suModelText").style.display=suNeedsModelText()?"block":"none";
