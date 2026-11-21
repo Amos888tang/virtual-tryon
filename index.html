@@ -1402,7 +1402,7 @@ function renderPhotos(){
     var mv=document.createElement("button"); mv.type="button";
     mv.textContent=p.multiView?"✓ 4視角":"4視角";
     mv.title="標記為「4 角度合一」的全身多視角圖（試穿時 4 個角度都會換上衣服）";
-    mv.style.cssText="position:absolute;bottom:4px;left:4px;font-size:.72rem;padding:2px 8px;border-radius:999px;border:1px solid var(--line);background:"+(p.multiView?"var(--accent)":"var(--surface)")+";color:"+(p.multiView?"var(--accent-ink)":"var(--ink2)")+";z-index:2;cursor:pointer";
+    mv.style.cssText="position:absolute;top:4px;right:36px;font-size:.72rem;padding:2px 8px;border-radius:999px;border:1px solid var(--line);background:"+(p.multiView?"var(--accent)":"var(--surface)")+";color:"+(p.multiView?"var(--accent-ink)":"var(--ink2)")+";z-index:2;cursor:pointer";
     mv.addEventListener("click", function(e){
       e.stopPropagation();
       p.multiView=!p.multiView;
