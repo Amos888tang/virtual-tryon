@@ -428,10 +428,19 @@ hr.sep{border:none;border-top:1px solid var(--line);margin:16px 0}
       <button class="btn small" id="syncNowBtn">立即同步</button>
       <button class="btn small ghost" id="syncBaseBtn">設定同步伺服器</button>
       <button class="btn small" id="rescueBtn">找回這台裝置的資料</button>
+      <button class="btn small" id="recoverPhotosBtn">從雲端救回照片</button>
+      <button class="btn small danger" id="clearLocalBtn">清除本機資料</button>
       <span class="kv" id="syncStatus">沒有設定同步伺服器（只用本機）</span>
     </div>
     <p class="kv" id="dataLine" style="margin:0 0 10px">這台裝置的資料：計算中…</p>
     <p class="kv">備份檔一律用你自己設的密碼整包加密（PBKDF2＋AES-GCM），裡面含 API 金鑰與全部照片，請當成私密檔案保管。要匯入別人的衣櫃與模型：請對方把備份檔傳給你，在這裡選檔後由<strong>對方在你這台裝置輸入他的密碼</strong>，匯入完成程式會立刻清掉密碼欄位。</p>
+  </section>
+
+  <!-- 7. 垃圾桶 -->
+  <section class="block" id="secTrash">
+    <div class="sec-head"><h2>7．垃圾桶</h2><span class="hint">刪掉的東西先來這裡，30 天內可以還原；「永久刪除」才會從所有裝置與雲端一起刪掉。超過 30 天會自動清空。</span></div>
+    <div class="grid cards" id="trashGrid"></div>
+    <div class="empty" id="trashEmpty">垃圾桶是空的。刪掉的東西會先放這裡，可以還原。</div>
   </section>
 
   <p class="kv" style="text-align:center;margin-top:26px">價格與免費額度資料來源：2026-11-19 查證的模型比較研究（Cloudflare 官方訂價頁、fal.ai、FASHN、各廠商文件與價格追蹤站）。價格會變動，實際以廠商帳單為準；標「未驗證」處請先在廠商後台確認再儲值。</p>
@@ -752,7 +761,6 @@ async function idbPut(store,val,opts){
   var db=await openDb(); return new Promise(function(res,rej){ var rq=db.transaction(store,"readwrite").objectStore(store).put(val); rq.onsuccess=function(){res();}; rq.onerror=function(){rej(rq.error);}; }); }
 async function idbDel(store,id,opts){
   opts=opts||{};
-  if(!opts.internal) addTomb(store,id);
   var db=await openDb(); return new Promise(function(res,rej){ var rq=db.transaction(store,"readwrite").objectStore(store).delete(id); rq.onsuccess=function(){res();}; rq.onerror=function(){rej(rq.error);}; }); }
 
 /* ============ 狀態（設定存 localStorage） ============ */
@@ -761,6 +769,7 @@ var state={
   photos:[], wardrobe:[], results:[], angleGroups:[],
   selectedPhotoId:null, selectedWardrobe:{}, activeAngleGroupId:null,
   models:[], activeModelId:null, unlocked:false, userId:null, accountEmail:"",
+  trash:[],
   lastTryonFail:null
 };
 function rawModels(){ try{ return JSON.parse(localStorage.getItem(LS_MODELS)||"[]"); }catch(e){ return []; } }
@@ -1337,7 +1346,7 @@ function renderPhotos(){
     b.addEventListener("click", function(){ state.selectedPhotoId=p.id; state.activeAngleGroupId=null; renderPhotos(); renderTryonSummary(); renderAngleGroups(); });
     var del=document.createElement("button"); del.className="del"; del.textContent="✕"; del.title="刪除這張"; del.style.cssText="position:absolute;top:4px;right:4px;width:2rem;height:2rem;border-radius:50%;border:1px solid var(--line);background:var(--surface);color:var(--err);z-index:2";
     del.addEventListener("click", async function(){
-      await idbDel("photos",p.id);
+      await trashItem("photos",p.id);
       state.photos=state.photos.filter(function(x){return x.id!==p.id;});
       if(state.selectedPhotoId===p.id) state.selectedPhotoId=state.photos.length?state.photos[0].id:null;
       renderPhotos(); renderTryonSummary();
@@ -1369,7 +1378,7 @@ $("photoReplaceFile").addEventListener("change", async function(){
 });
 $("photoDeleteBtn").addEventListener("click", async function(){
   var sel=selectedPhoto(); if(!sel){ toast("目前沒有選定的照片。"); return; }
-  await idbDel("photos",sel.id);
+  await trashItem("photos",sel.id);
   state.photos=state.photos.filter(function(x){return x.id!==sel.id;});
   state.selectedPhotoId=state.photos.length?state.photos[0].id:null;
   renderPhotos(); renderTryonSummary();
@@ -1489,7 +1498,7 @@ function renderWardrobe(){
     });
     card.querySelector("[data-a=view]").addEventListener("click", function(){ openViewer(w.dataUrl); });
     card.querySelector("[data-a=del]").addEventListener("click", async function(){
-      await idbDel("wardrobe",w.id);
+      await trashItem("wardrobe",w.id);
       state.wardrobe=state.wardrobe.filter(function(x){return x.id!==w.id;});
       delete state.selectedWardrobe[w.id];
       renderWardrobe(); renderTryonSummary();
@@ -1774,7 +1783,7 @@ function guardModel(){
   var m=activeModel();
   if(!m){
     toast("還沒有可用的模型：先到下面「模型設定」存一組。");
-    $("secModels").scrollIntoView({behavior:"smooth"});
+    try{ $("secModels").scrollIntoView({behavior:"smooth"}); }catch(e){}
     return null;
   }
   if(!modelCanTryOn(m)){
@@ -1979,7 +1988,7 @@ function renderResults(){
       mi.style.display=(mi.style.display==="block")?"none":"block";
     });
     card.querySelector("[data-a=del]").addEventListener("click", async function(){
-      await idbDel("results",r.id);
+      await trashItem("results",r.id);
       state.results=state.results.filter(function(x){return x.id!==r.id;});
       renderResults();
     });
@@ -2181,7 +2190,7 @@ function renderAngleGroups(){
     });
     div.appendChild(grid);
     div.querySelector("[data-a='del']").addEventListener("click", async function(){
-      await idbDel("angleGroups",g.id);
+      await trashItem("angleGroups",g.id);
       state.angleGroups=state.angleGroups.filter(function(x){return x.id!==g.id;});
       if(state.activeAngleGroupId===g.id) state.activeAngleGroupId=null;
       renderAngleGroups(); renderTryonSummary();
@@ -2431,10 +2440,21 @@ async function loadUserData(){
   loadSettings();
   try{
     var p=await idbAll("photos"), w=await idbAll("wardrobe"), r=await idbAll("results"), g=await idbAll("angleGroups");
-    state.photos=p.filter(function(x){return x.owner===state.userId;}).sort(function(a,b){return (a.createdAt||0)-(b.createdAt||0);});
-    state.wardrobe=w.filter(function(x){return x.owner===state.userId;}).sort(function(a,b){return (b.createdAt||0)-(a.createdAt||0);});
-    state.results=r.filter(function(x){return x.owner===state.userId;}).sort(function(a,b){return (b.createdAt||0)-(a.createdAt||0);});
-    state.angleGroups=g.filter(function(x){return x.owner===state.userId;}).sort(function(a,b){return (b.createdAt||0)-(a.createdAt||0);});
+    state.trash=[];
+    [["photos",p],["wardrobe",w],["results",r],["angleGroups",g]].forEach(function(pair){
+      var kind=pair[0], live=[], tr=[];
+      pair[1].forEach(function(x){
+        if(x.owner!==state.userId) return;
+        if(x.deletedAt) tr.push({kind:kind,rec:x}); else live.push(x);
+      });
+      if(kind==="photos") state.photos=live.sort(function(a,b){return (a.createdAt||0)-(b.createdAt||0);});
+      if(kind==="wardrobe") state.wardrobe=live.sort(function(a,b){return (b.createdAt||0)-(a.createdAt||0);});
+      if(kind==="results") state.results=live.sort(function(a,b){return (b.createdAt||0)-(a.createdAt||0);});
+      if(kind==="angleGroups") state.angleGroups=live.sort(function(a,b){return (b.createdAt||0)-(a.createdAt||0);});
+      state.trash=state.trash.concat(tr);
+    });
+    state.trash.sort(function(a,b){return (b.rec.deletedAt||0)-(a.rec.deletedAt||0);});
+    await purgeOldTrash();
   }catch(e){ toast("本地資料庫開啟失敗，這個瀏覽器可能不支援 IndexedDB。"); }
   state.selectedWardrobe={}; state.activeAngleGroupId=null;
   state.selectedPhotoId=state.photos.length?state.photos[state.photos.length-1].id:null;
@@ -2451,7 +2471,6 @@ async function startUserSession(acc,pw){
   $("authPw").value=""; $("authPw2").value=""; $("authErr").textContent="";
   renderPhotos(); renderWardrobe(); renderResults(); renderAngleGroups(); renderModels();
   renderTryonSummary(); refreshPwSetup(); refreshLock();
-  if(setupNeeded()) openSetup();
   toast("已登入："+acc.email);
 }
 function logoutAccount(){
@@ -2462,10 +2481,10 @@ function logoutAccount(){
   state.userId=null; state.accountEmail=""; state.unlocked=false;
   state.photos=[]; state.wardrobe=[]; state.results=[]; state.angleGroups=[]; state.models=[];
   state.activeModelId=null; state.selectedPhotoId=null; state.selectedWardrobe={}; state.activeAngleGroupId=null;
-  state.lastTryonFail=null;
+  state.lastTryonFail=null; state.trash=[];
   $("whoWrap").style.display="none"; $("whoami").textContent="";
   showRescueBanner(0);
-  renderPhotos(); renderWardrobe(); renderResults(); renderAngleGroups(); renderModels(); renderTryonSummary();
+  renderPhotos(); renderWardrobe(); renderResults(); renderAngleGroups(); renderModels(); renderTryonSummary(); renderTrash();
   document.documentElement.classList.add("auth-pending");
   var wasUser=state.accountEmail;
   var hasLoginTarget=loadAccounts().length||syncEnabled();
@@ -2592,7 +2611,7 @@ function modelsUpdatedAtOf(){
 function setModelsUpdatedAt(t){ try{ localStorage.setItem(LS_MODELS_AT+"."+(state.userId||"guest"), String(t)); }catch(e){} }
 function loadTombs(){ try{ return JSON.parse(localStorage.getItem(LS_TOMBS)||"[]"); }catch(e){ return []; } }
 function saveTombs(list){ try{ localStorage.setItem(LS_TOMBS, JSON.stringify(list.slice(-500))); }catch(e){} }
-function addTomb(kind,id){ if(!syncEnabled()||!syncToken) return; var t=loadTombs(); if(!t.some(function(x){return x.kind===kind&&x.id===id;})) { t.push({kind:kind,id:id,at:Date.now()}); saveTombs(t); } }
+function addTomb(kind,id,data){ if(!syncEnabled()||!syncToken) return; var t=loadTombs(); if(!t.some(function(x){return x.kind===kind&&x.id===id;})) { t.push({kind:kind,id:id,at:Date.now(),data:data}); saveTombs(t); } }
 
 function hexFromBuf(buf){ return Array.from(new Uint8Array(buf)).map(function(b){return b.toString(16).padStart(2,"0");}).join(""); }
 function hexToU8(hex){ var u=new Uint8Array(hex.length/2); for(var i=0;i<u.length;i++) u[i]=parseInt(hex.substr(i*2,2),16); return u; }
@@ -2708,9 +2727,87 @@ async function rescueLocalData(){
   if(syncEnabled() && syncToken) await syncNow({silent:true});
   setSyncStatus("已找回 "+n+" 筆，並同步完成");
 }
+/* ============ 垃圾桶（軟刪除，30 天內可還原） ============ */
+var TRASH_DAYS=30;
+function trashKindLabel(kind){ return {photos:"照片",wardrobe:"衣櫃",results:"試穿成品",angleGroups:"多角度底圖"}[kind]||kind; }
+function trashSnapshot(rec){
+  var d={}; for(var k in rec){ if(k!=="dataUrl" && k!=="owner") d[k]=rec[k]; }
+  if(rec.dataUrl) d.hasImg=1;
+  return d;
+}
+async function trashItem(kind,id){
+  var arr=stateArrayOf(kind); if(!arr) return;
+  var idx=arr.findIndex(function(x){return x.id===id;});
+  if(idx<0) return;
+  var rec=arr[idx];
+  rec.deletedAt=Date.now(); rec.updatedAt=Date.now();
+  await idbPut(kind,rec,{internal:true});
+  arr.splice(idx,1);
+  state.trash.unshift({kind:kind,rec:rec});
+  if(kind==="wardrobe") delete state.selectedWardrobe[id];
+  if(kind==="photos" && state.selectedPhotoId===id) state.selectedPhotoId=arr.length?arr[0].id:null;
+  if(kind==="angleGroups" && state.activeAngleGroupId===id) state.activeAngleGroupId=null;
+  /* 垃圾桶是「本機」概念，不推雲端：別台和雲端都保留原資料，可還原 */
+  renderAll();
+}
+async function restoreTrash(kind,id){
+  var idx=state.trash.findIndex(function(x){return x.kind===kind && x.rec.id===id;});
+  if(idx<0) return;
+  var entry=state.trash[idx], rec=entry.rec;
+  delete rec.deletedAt; rec.updatedAt=Date.now();
+  await idbPut(kind,rec,{internal:true});
+  state.trash.splice(idx,1);
+  var arr=stateArrayOf(kind);
+  if(arr) arr.push(rec);
+  renderAll(); scheduleSync();
+}
+async function hardDelete(kind,id){
+  await idbDel(kind,id,{internal:true});
+  try{ if(syncEnabled()&&syncToken) await apiFetch("/api/blob/"+kind+"/"+id,{method:"DELETE"}); }catch(e){}
+  addTomb(kind,id,null);   /* data:null = 永久刪除，別台也硬刪 */
+  scheduleSync();
+}
+async function purgeOldTrash(){
+  /* 30 天後自動清空垃圾桶：只清「本機」，雲端與其他裝置不受影響 */
+  var cut=Date.now()-TRASH_DAYS*86400000;
+  for(var i=state.trash.length-1;i>=0;i--){
+    var e=state.trash[i];
+    if(e.rec.deletedAt && e.rec.deletedAt<cut){
+      await idbDel(e.kind,e.rec.id,{internal:true});
+      state.trash.splice(i,1);
+    }
+  }
+}
+function renderTrash(){
+  var box=$("trashGrid"); if(!box) return;
+  box.innerHTML="";
+  var empty=$("trashEmpty"); if(empty) empty.style.display=state.trash.length?"none":"block";
+  state.trash.forEach(function(entry){
+    var kind=entry.kind, rec=entry.rec;
+    var card=document.createElement("div"); card.className="card";
+    card.innerHTML="<div class='ph'><img alt='垃圾桶項目'/></div><div class='bd'>"+
+      "<div class='nm'>"+esc(trashKindLabel(kind))+"："+esc(rec.name||rec.label||"（未命名）")+"</div>"+
+      "<div class='meta'>刪除於 "+new Date(rec.deletedAt||Date.now()).toLocaleString("zh-TW")+"</div>"+
+      "<div class='row'><button class='linklike' data-a='restore'>還原</button><button class='linklike' data-a='purge' style='color:var(--err)'>永久刪除</button></div></div>";
+    var img=card.querySelector("img");
+    if(rec.dataUrl){ img.src=rec.dataUrl; } else img.style.display="none";
+    card.querySelector("[data-a=restore]").addEventListener("click", function(){
+      restoreTrash(kind,rec.id).then(function(){ toast("已還原，稍後會同步回其他裝置。"); });
+    });
+    card.querySelector("[data-a=purge]").addEventListener("click", function(){
+      if(!confirm("永久刪除後無法還原，且會從所有裝置與雲端一起刪掉。確定？")) return;
+      hardDelete(kind,rec.id).then(function(){
+        state.trash=state.trash.filter(function(x){ return !(x.kind===kind && x.rec.id===rec.id); });
+        renderTrash(); toast("已永久刪除。");
+      });
+    });
+    box.appendChild(card);
+  });
+}
+
 function renderAll(){
   renderPhotos(); renderWardrobe(); renderResults(); renderAngleGroups(); renderModels();
-  renderTryonSummary(); refreshPwSetup();
+  renderTryonSummary(); refreshPwSetup(); renderTrash();
 }
 function stateArrayOf(kind){
   if(kind==="photos") return state.photos;
@@ -2774,16 +2871,45 @@ async function applyRemoteItem(it){
   }
   var arr=stateArrayOf(it.kind); if(!arr) return;
   var idx=arr.findIndex(function(x){return x.id===it.id;});
+  var tIdx=state.trash.findIndex(function(x){return x.kind===it.kind && x.rec.id===it.id;});
   if(it.deleted){
-    if(idx>=0){ await idbDel(it.kind,it.id,{internal:true}); arr.splice(idx,1); }
+    var localRec = idx>=0 ? arr[idx] : (tIdx>=0 ? state.trash[tIdx].rec : null);
+    /* 本機這筆較新、又沒被刪（例如剛還原）：別被還沒追上來的舊墓碑再刪一次 */
+    if(localRec && !localRec.deletedAt && (localRec.updatedAt||0)>(it.updatedAt||0)) return;
+    if(it.data && Object.keys(it.data||{}).length){
+      /* 軟刪除：進垃圾桶，保留資料與照片（可還原） */
+      if(idx>=0){
+        var r=arr[idx]; r.deletedAt=it.updatedAt||Date.now(); r.updatedAt=it.updatedAt||r.updatedAt;
+        await idbPut(it.kind,r,{internal:true}); arr.splice(idx,1);
+        state.trash.unshift({kind:it.kind,rec:r});
+      } else if(tIdx<0){
+        var rec=Object.assign({},it.data); delete rec.hasImg;
+        rec.id=it.id; rec.owner=state.userId; rec.updatedAt=it.updatedAt||0; rec.deletedAt=it.updatedAt||Date.now();
+        if(it.data.hasImg){ var d0=await downloadBlob(it.kind,it.id); rec.dataUrl=d0||""; }
+        await idbPut(it.kind,rec,{internal:true});
+        state.trash.unshift({kind:it.kind,rec:rec});
+      }
+    } else {
+      /* 永久刪除：data 為空，別台也硬刪 */
+      if(idx>=0){ await idbDel(it.kind,it.id,{internal:true}); arr.splice(idx,1); }
+      if(tIdx>=0){ await idbDel(it.kind,it.id,{internal:true}); state.trash.splice(tIdx,1); }
+    }
     return;
   }
-  if(idx>=0 && (arr[idx].updatedAt||0)>=(it.updatedAt||0)) return;
+  /* 本機這筆在垃圾桶、時間又比 remote 新：表示 remote 還沒收到刪除，先別把它復活 */
+  if(tIdx>=0 && (state.trash[tIdx].rec.updatedAt||0)>(it.updatedAt||0)) return;
+  if(idx>=0 && (arr[idx].updatedAt||0)>=(it.updatedAt||0) && !arr[idx].deletedAt) return;
   var rec=Object.assign({},it.data||{});
-  delete rec.hasImg;
+  delete rec.hasImg; delete rec.deletedAt;
   rec.id=it.id; rec.owner=state.userId; rec.updatedAt=it.updatedAt||0;
-  if(it.data && it.data.hasImg){ var d=await downloadBlob(it.kind,it.id); if(d) rec.dataUrl=d; else if(idx>=0 && arr[idx].dataUrl) rec.dataUrl=arr[idx].dataUrl; }
+  if(it.data && it.data.hasImg){
+    var d=await downloadBlob(it.kind,it.id);
+    if(d) rec.dataUrl=d;
+    else if(idx>=0 && arr[idx].dataUrl) rec.dataUrl=arr[idx].dataUrl;
+    else if(tIdx>=0 && state.trash[tIdx].rec.dataUrl) rec.dataUrl=state.trash[tIdx].rec.dataUrl;
+  }
   if(idx>=0) arr[idx]=rec; else arr.push(rec);
+  if(tIdx>=0) state.trash.splice(tIdx,1);
   await idbPut(it.kind,rec,{internal:true});
 }
 async function syncNow(opts){
@@ -2811,7 +2937,7 @@ async function syncNow(opts){
         }
       }
     });
-    loadTombs().forEach(function(t){ push.push({kind:t.kind,id:t.id,updatedAt:t.at,deleted:1,data:null}); });
+    loadTombs().forEach(function(t){ push.push({kind:t.kind,id:t.id,updatedAt:t.at,deleted:1,data:t.data||null}); });
     for(var p=0;p<push.length;p+=100) await apiFetch("/api/sync",{method:"POST",json:{items:push.slice(p,p+100)},keepalive:!!opts.flush});
     if(!opts.flush) for(var b=0;b<blobJobs.length;b++) await uploadBlob(blobJobs[b].kind,blobJobs[b].id,blobJobs[b].dataUrl);
     if(push.length) saveTombs([]);
@@ -2831,7 +2957,7 @@ function startAutoSync(){
   if(syncInterval||!syncEnabled()||!syncToken) return;
   syncInterval=setInterval(function(){
     if(syncEnabled()&&syncToken&&!document.hidden) syncNow({silent:true});
-  },60000);
+  },3600000);
 }
 function stopAutoSync(){ if(syncInterval){ clearInterval(syncInterval); syncInterval=null; } }
 function flushSync(){
@@ -2852,6 +2978,66 @@ function scheduleSync(){
 }
 $("syncNowBtn").addEventListener("click", function(){ syncNow({}); });
 $("rescueBtn").addEventListener("click", function(){ rescueLocalData().catch(function(e){ toast("找回失敗："+(e.message||e)); }); });
+$("recoverPhotosBtn").addEventListener("click", function(){ recoverPhotosFromCloud().catch(function(e){ toast("救回失敗："+(e.message||e)); }); });
+$("clearLocalBtn").addEventListener("click", function(){ clearLocalData().catch(function(e){ toast("清除失敗："+(e.message||e)); }); });
+
+/* 一鍵清除本機資料：只清「這台裝置」，雲端與其他裝置不動。清完按「立即同步」會重新下載。 */
+async function clearLocalData(){
+  var msg="確定要清除「這台裝置」的全部資料嗎？\n\n"+
+    "會清掉：照片、衣櫃、試穿成品、多角度底圖、垃圾桶、模型設定。\n"+
+    "不會動到：雲端、其他裝置、你的帳號。\n\n"+
+    "清完後按「立即同步」會從雲端重新下載。";
+  if(!confirm(msg)) return;
+  var db=await openDb();
+  for(var i=0;i<SYNC_STORES.length;i++){
+    var store=SYNC_STORES[i];
+    await new Promise(function(res,rej){
+      var tx=db.transaction(store,"readwrite").objectStore(store).clear();
+      tx.onsuccess=function(){res();}; tx.onerror=function(){rej(tx.error);};
+    });
+  }
+  /* 模型（保留別人的，只清自己的）＋時間戳 */
+  try{
+    var others=rawModels().filter(function(m){ return m.owner!==state.userId; });
+    localStorage.setItem(LS_MODELS, JSON.stringify(others));
+    localStorage.removeItem(LS_ACTIVE+"."+(state.userId||"guest"));
+    localStorage.removeItem(LS_MODELS_AT+"."+(state.userId||"guest"));
+  }catch(e){}
+  saveTombs([]);
+  state.photos=[]; state.wardrobe=[]; state.results=[]; state.angleGroups=[]; state.trash=[]; state.models=[];
+  state.activeModelId=null; state.selectedPhotoId=null; state.selectedWardrobe={}; state.activeAngleGroupId=null;
+  renderAll(); renderDataLine();
+  toast("已清除本機資料。按「立即同步」從雲端重新下載。");
+}
+
+/* 從雲端救回照片：刪除只會清掉「文字描述」，照片本體（R2）還在。
+   掃雲端的照片清單，用原本的 id 抓回來，之後同步會把刪除標記頂掉。 */
+async function recoverPhotosFromCloud(){
+  if(!syncEnabled()||!syncToken){ toast("要先登入並設定同步伺服器才能救回。"); return; }
+  $("recoverPhotosBtn").disabled=true; $("recoverPhotosBtn").textContent="救回中…";
+  try{
+    var remote=await apiFetch("/api/sync");
+    var blobs=(remote.blobs||[]).filter(function(b){ return b.kind==="photos"; });
+    if(!blobs.length){ toast("雲端沒有可救回的照片（照片本體不在雲端）。"); return; }
+    var n=0, miss=0;
+    for(var i=0;i<blobs.length;i++){
+      var b=blobs[i];
+      var d=await downloadBlob(b.kind,b.id);
+      if(!d){ miss++; continue; }
+      var rec={ id:b.id, dataUrl:d, label:"救回照片 "+(n+1), createdAt:Date.now(), updatedAt:Date.now() };
+      await idbPut("photos",rec,{internal:true});
+      var idx=state.photos.findIndex(function(x){return x.id===b.id;});
+      if(idx>=0) state.photos[idx]=rec; else state.photos.push(rec);
+      n++;
+    }
+    state.photos.sort(function(a,b){return (a.createdAt||0)-(b.createdAt||0);});
+    renderPhotos(); renderTryonSummary();
+    toast("已從雲端救回 "+n+" 張照片"+(miss?("（"+miss+" 張抓不到）"):"")+"，名稱先標「救回照片」，請自行補。");
+    scheduleSync();
+  }finally{
+    $("recoverPhotosBtn").disabled=false; $("recoverPhotosBtn").textContent="從雲端救回照片";
+  }
+}
 $("rescueBannerBtn").addEventListener("click", function(){ rescueLocalData().catch(function(e){ toast("找回失敗："+(e.message||e)); }); });
 $("syncBaseBtn").addEventListener("click", function(){
   var v=prompt("貼上同步伺服器網址（例：https://tryon-sync.你的帳號.workers.dev）\n留空按確定＝清除，只用本機。", syncBase());
@@ -2890,7 +3076,6 @@ async function startCloudSession(pw){
   $("whoWrap").style.display="inline"; $("whoami").textContent=state.accountEmail;
   $("authPw").value=""; $("authPw2").value=""; $("authErr").textContent="";
   renderAll(); refreshSyncStatus(); startAutoSync(); renderDataLine();
-  if(setupNeeded()) openSetup();
   toast("已登入並同步："+state.accountEmail+(moved?("（已把這台裝置原本的 "+moved+" 筆資料搬進雲端帳號）"):""));
   hintOrphanData();
   if(!moved && !state.models.length && !state.wardrobe.length){
