@@ -773,6 +773,8 @@ function loadSettings(){
      實測會被跨域擋掉。已存的設定直接遷移到原生的 :generateContent。 */
   var migrated=false;
   state.models.forEach(function(m){
+    if(m.workerUrl) m.workerUrl=normUrl(m.workerUrl);
+    if(m.endpoint) m.endpoint=normUrl(m.endpoint);
     if(m.vendor==="gemini" && (!m.endpoint || m.endpoint.indexOf("/openai/images/edits")>=0)){
       m.endpoint="https://generativelanguage.googleapis.com/v1beta/models/"+m.modelId+":generateContent";
       migrated=true;
@@ -798,6 +800,14 @@ function saveModels(){
 function pwHash(){ return localStorage.getItem(LS_PWHASH)||null; }
 function activeModel(){ return state.models.find(function(m){return m.id===state.activeModelId;})||null; }
 function modelOf(id){ return state.models.find(function(m){return m.id===id;})||null; }
+/* 使用者常把網址貼成 tryon-proxy.xxx.workers.dev（少了 https://），
+   少了它 fetch 會當成相對路徑打到網站自己身上。這裡統一補齊。 */
+function normUrl(u){
+  var v=String(u||"").trim();
+  if(!v) return "";
+  if(!/^https?:\/\//i.test(v)) v="https://"+v;
+  return v.replace(/\/+$/,"");
+}
 function maskKey(k){ if(!k) return ""; return "••••••••"+String(k).slice(-4); }
 function vendorLabel(m){ if(m.vendor==="custom") return m.customVendor||"自訂廠商"; var p=PROVIDERS[m.vendor]; return p?p.label:m.vendor; }
 function findModelMeta(m){
@@ -1238,7 +1248,7 @@ $("mSaveBtn").addEventListener("click", async function(){
   if(endpoint.indexOf("{MODEL}")>=0) endpoint=endpoint.replace("{MODEL}",modelId);
   var worker=(v==="cloudflare")?$("mWorker").value.trim():"";
   var finalKey=key||(editing?editing.apiKey:"");
-  var rec={ id:(editing?editing.id:uid()), vendor:v, customVendor:(v==="custom"?$("mCustomVendor").value.trim():""), modelId:modelId, modelName:modelName, endpoint:endpoint, accountId:acct, workerUrl:worker, apiKey:finalKey, createdAt:(editing?editing.createdAt:Date.now()) };
+  var rec={ id:(editing?editing.id:uid()), vendor:v, customVendor:(v==="custom"?$("mCustomVendor").value.trim():""), modelId:modelId, modelName:modelName, endpoint:normUrl(endpoint), accountId:acct, workerUrl:normUrl(worker), apiKey:finalKey, createdAt:(editing?editing.createdAt:Date.now()) };
   if(sessionKey){ rec.keyEnc=await encryptSecret(finalKey); }
   var wasEditing=!!editing;
   if(editing){
@@ -1588,7 +1598,7 @@ async function callCloudflare(m, images, prompt){
   if(m.workerUrl){
     /* 透過自己部署的 Worker 轉一手：Worker 在伺服器端去打 api.cloudflare.com（伺服器之間沒有跨域限制），
        再把回應加上 CORS 標頭回給瀏覽器。金鑰一樣由瀏覽器帶過去，Worker 不儲存。 */
-    var base=String(m.workerUrl).replace(/\/+$/,"");
+    var base=normUrl(m.workerUrl);
     target=base+"/?account="+encodeURIComponent(m.accountId||"")+"&model="+encodeURIComponent(m.modelId||"");
   }
   var r=await fetch(target,{method:"POST",headers:{"Authorization":"Bearer "+m.apiKey},body:fd});
@@ -2072,7 +2082,7 @@ $("diagBtn").addEventListener("click", async function(){
   }
   if(m&&m.vendor==="cloudflare"&&m.workerUrl){
     /* 有設定 Worker 就改測 Worker，不用再測 Cloudflare 本體（本體一定被擋，會誤導判斷） */
-    var wbase=String(m.workerUrl).replace(/\/+$/,"")+"/";
+    var wbase=normUrl(m.workerUrl)+"/";
     hosts=hosts.filter(function(h){ return h.url.indexOf("api.cloudflare.com")!==0; });
     hosts.unshift({ label:"Cloudflare（經你的 Worker 代理）", url:wbase });
   }
@@ -2095,7 +2105,7 @@ $("diagBtn").addEventListener("click", async function(){
     var fd=new FormData(); fd.append("prompt","probe");
     var probeUrl=m.endpoint;
     if(m.vendor==="cloudflare"&&m.workerUrl){
-      probeUrl=String(m.workerUrl).replace(/\/+$/,"")+"/?account="+encodeURIComponent(m.accountId||"")+"&model="+encodeURIComponent(m.modelId||"");
+      probeUrl=normUrl(m.workerUrl)+"/?account="+encodeURIComponent(m.accountId||"")+"&model="+encodeURIComponent(m.modelId||"");
     }
     var ep=await diagProbe(probeUrl,{method:"POST",headers:auth,body:fd});
     lines.push("── 實際接口探測（故意用假金鑰，不會產生費用）");
