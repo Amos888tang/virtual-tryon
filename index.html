@@ -1896,7 +1896,7 @@ function refCandidateList(base){
 }
 function resolveRefPhoto(base){
   if(!base) return null;
-  if(refChoice==="none") return null;
+  if(refChoice==="none" || refChoice==="none-strict") return null;
   var list=refCandidateList(base);
   if(refChoice!=="auto"){
     return list.find(function(x){ return x.value===refChoice; })||null;
@@ -1927,7 +1927,7 @@ async function baseNeedsRef(){
   if(!base || base.fromAngles) return false;      /* 多角度全身照不用補 */
   var p=selectedPhoto(); if(!p) return false;
   if(p.bodyFull===true) return false;             /* 使用者說是全身照 */
-  if(refChoice!=="auto" && refChoice!=="none") return false;  /* 已經自己指定參考照 */
+  if(refChoice!=="auto" && refChoice!=="none" && refChoice!=="none-strict") return false;  /* 已經自己指定參考照 */
   if(p.bodyRefAsked) return false;                /* 這張問過了 */
   var size=await imageSizeOf(p.dataUrl);
   if(!size) return true;
@@ -1956,10 +1956,11 @@ $("refMarkFull").addEventListener("click", async function(){
 function fillRefSelect(){
   var sel=$("tryonRefSel"); if(!sel) return;
   var base=baseImageInfo(), list=refCandidateList(base);
-  if(refChoice!=="auto" && refChoice!=="none" && !list.some(function(x){ return x.value===refChoice; })) refChoice="auto";
+  if(refChoice!=="auto" && refChoice!=="none" && refChoice!=="none-strict" && !list.some(function(x){ return x.value===refChoice; })) refChoice="auto";
   sel.innerHTML="";
   var o0=document.createElement("option"); o0.value="auto"; o0.textContent="自動（多角度底圖優先，沒有就用照片庫另一張）"; sel.appendChild(o0);
   var o1=document.createElement("option"); o1.value="none"; o1.textContent="不補（完全照底圖，缺的部位交給模型自己補）"; sel.appendChild(o1);
+  var o1s=document.createElement("option"); o1s.value="none-strict"; o1s.textContent="不補（完全照底圖）"; sel.appendChild(o1s);
   list.forEach(function(x){ var o=document.createElement("option"); o.value=x.value; o.textContent=x.label; sel.appendChild(o); });
   sel.value=refChoice;
   var ref=resolveRefPhoto(base);
@@ -1968,6 +1969,7 @@ function fillRefSelect(){
   else if(base.fromAngles) note.textContent="目前底圖是多角度全身照，手腳與下半身都拍到了，不需要再補。";
   else if(ref) note.textContent="這次會用「"+ref.label+"」補手腳、下半身與身體比例；只補身體，不會抄它的衣服、姿勢或背景。";
   else if(refChoice==="none") note.textContent="已設為不補：底圖沒拍到的部位會由模型自己補，比例可能會偏。";
+  else if(refChoice==="none-strict") note.textContent="已設為不補（完全照底圖）：不會補底圖沒拍到的部位，嚴格照底圖。";
   else note.textContent="照片庫沒有其他照片可以當參考，先到第 1 節多傳一張看得到手腳／下半身的照片。";
 }
 $("tryonRefSel").addEventListener("change", function(){
@@ -2081,12 +2083,13 @@ async function runTryon(){
   /* 衣櫃照片都是「MODEL 穿著衣服」的參考照，所以指令要的是：把 MODEL 身上整套的
      上衣與下身都換到底圖那個人身上（不是只換一件單品）。
      有補圖參考照時（第二張），只拿它補底圖缺的手腳／下半身與比例，不抄它的衣服與背景。 */
-  var prompt="Virtual try-on photo edit. The first image is the person we keep. "+
-    (ref?("The second image is another full-body photo of the same person, given ONLY as a body reference: use it to reconstruct the body parts that are missing or cut off in the first image (legs, feet, hands, lower body) and to keep that person's real body proportions. Never copy its clothes, pose or background, and do not copy any part of the person that is already visible in the first image. The wardrobe references start from the third image. ")
-        :(""))+
-    "Every wardrobe reference: if it shows a model wearing clothes, take the clothes that model is wearing — both the upper-body garment and the lower-body garment, plus any dress, outerwear or shoes that clearly belong to that outfit; if it only shows a single garment on its own, take that garment. Put all of those clothes on the person in the first image, combining every reference into one complete outfit. Copy only the clothes: never copy the model's face, hair, body, pose or background. Keep the person's face, hair, head size, body shape, body proportions and pose exactly the same as the first image. "+
-    (base.fromAngles?"Keep the plain solid studio background.":"Keep the original background and lighting of the person's photo exactly as it is.")+
-    " The clothes must be worn on that person's body, photorealistic, with natural fabric drape and fit.";
+  /* FLUX.2 klein 對「保臉」遵從度有限，指令要簡短、命令式，反覆強調臉不能動 */
+  var prompt="Virtual try-on photo edit. The first image is the person. Keep the face IDENTICAL — do not change, redraw or alter the face, facial features, expression, skin tone or hair. Keep the same body shape and posture. "+
+    (ref?("Use the second image only as a body reference to fill in missing legs, feet, hands or lower body; do not copy its clothes, face or pose. "):"")+
+    (refChoice==="none-strict"?"Do not draw or fill in any body parts that are not visible in the first image — keep the same framing and crop, do not add legs, feet or lower body if they were not in the photo. ":"")+
+    "Take only the clothes from each wardrobe reference image and put them on this person as one complete outfit. Never change the person's face, head or skin. "+
+    (base.fromAngles?"Keep the plain solid studio background.":"Keep the original background and lighting.")+
+    " Photorealistic, natural fabric drape and fit.";
   if(extra) prompt+=" Extra requirements from the user (follow these while keeping everything above): "+extra;
   $("tryonProgWrap").style.display="block"; $("tryonProg").style.width="15%";
   $("tryonStatus").textContent="準備照片並送出給 "+vendorLabel(m)+"…（階段進度）";
