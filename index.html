@@ -228,6 +228,12 @@ hr.sep{border:none;border-top:1px solid var(--line);margin:16px 0}
     <p class="lede">上傳全身照、從衣櫃挑 1–3 件衣服，用你自己儲存的廠商 API 直接在瀏覽器裡合成試穿圖。這個版本不需要後端，整個程式就是這一個 HTML 檔，可以打包帶走、放到 GitHub Pages／Cloudflare Pages／Vercel 上開來用。</p>
   </div>
 
+  <div class="notice" id="rescueBanner" style="display:none;border-color:var(--warn)">
+    <p><strong>這台裝置還有 <span id="rescueCount">0</span> 筆資料不屬於目前這個帳號</strong></p>
+    <p class="small">可能是你之前用本機帳號（沒有連雲端）時建立的照片、衣櫃、成品、多角度或模型。它們還在這台裝置裡，只是換帳號後不會顯示。按下面這顆就會把它們收進目前的帳號並上傳。</p>
+    <p style="margin-top:8px"><button class="btn primary" id="rescueBannerBtn">找回這台裝置的資料</button></p>
+  </div>
+
   <div class="notice">
     <p><strong>先講清楚三件事：</strong></p>
     <p class="small">1．資料只存在這台裝置的瀏覽器裡（照片存 IndexedDB、設定存 localStorage）。換瀏覽器、換裝置或清除瀏覽器資料，照片和設定就不見了，要重新上傳、重新填金鑰。原本那個 App 裡的照片、衣櫃、模型設定<strong>不會</strong>自動帶過來，這一版從空白開始。</p>
@@ -2438,6 +2444,7 @@ function logoutAccount(){
   state.activeModelId=null; state.selectedPhotoId=null; state.selectedWardrobe={}; state.activeAngleGroupId=null;
   state.lastTryonFail=null;
   $("whoWrap").style.display="none"; $("whoami").textContent="";
+  showRescueBanner(0);
   renderPhotos(); renderWardrobe(); renderResults(); renderAngleGroups(); renderModels(); renderTryonSummary();
   document.documentElement.classList.add("auth-pending");
   var wasUser=state.accountEmail;
@@ -2609,11 +2616,17 @@ async function dataInventory(){
   inv.orphan=allTotal-mineTotal;
   return inv;
 }
+function showRescueBanner(n){
+  var b=$("rescueBanner"); if(!b) return;
+  if(n>0){ $("rescueCount").textContent=n; b.style.display="block"; }
+  else b.style.display="none";
+}
 async function hintOrphanData(){
-  if(!state.userId) return;
+  if(!state.userId){ showRescueBanner(0); return; }
   try{
     var inv=await dataInventory();
-    if(inv.orphan>0) toast("注意：這台裝置還有 "+inv.orphan+" 筆資料不屬於目前帳號（可能是之前本機帳號的）。要找回請到第 6 節按「找回這台裝置的資料」。");
+    showRescueBanner(inv.orphan);
+    if(inv.orphan>0) toast("這台裝置還有 "+inv.orphan+" 筆資料不屬於目前帳號，最上面有「找回這台裝置的資料」可以按。");
   }catch(e){}
 }
 /* 使用者按下去才會把「這台裝置上不屬於目前帳號」的資料全部收進目前帳號（會逐筆確認數量） */
@@ -2644,6 +2657,7 @@ async function rescueLocalData(){
   await loadUserData();
   if(sessionKey) await loadKeysFromStorage();
   renderAll();
+  showRescueBanner(0);
   toast("已找回 "+n+" 筆資料，正在上傳到雲端…");
   if(syncEnabled() && syncToken) await syncNow({silent:true});
   setSyncStatus("已找回 "+n+" 筆，並同步完成");
@@ -2771,6 +2785,7 @@ function scheduleSync(){
 }
 $("syncNowBtn").addEventListener("click", function(){ syncNow({}); });
 $("rescueBtn").addEventListener("click", function(){ rescueLocalData().catch(function(e){ toast("找回失敗："+(e.message||e)); }); });
+$("rescueBannerBtn").addEventListener("click", function(){ rescueLocalData().catch(function(e){ toast("找回失敗："+(e.message||e)); }); });
 $("syncBaseBtn").addEventListener("click", function(){
   var v=prompt("貼上同步伺服器網址（例：https://tryon-sync.你的帳號.workers.dev）\n留空按確定＝清除，只用本機。", syncBase());
   if(v===null) return;
