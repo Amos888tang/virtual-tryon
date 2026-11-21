@@ -490,7 +490,10 @@ hr.sep{border:none;border-top:1px solid var(--line);margin:16px 0}
 <!-- 第一次使用的設定精靈：這台裝置沒有任何模型、也還沒設密碼時，開頁就擋在這裡 -->
 <div class="modal" id="setupModal">
   <div class="mbox" style="max-width:520px;max-height:90vh;overflow:auto">
-    <h3 style="margin:0 0 6px;font-family:'Noto Serif TC',serif">第一次使用，先設定一組模型</h3>
+    <div style="display:flex;gap:10px;align-items:baseline;flex-wrap:wrap;margin:0 0 6px">
+      <h3 style="margin:0;font-family:'Noto Serif TC',serif">第一次使用，先設定一組模型</h3>
+      <button class="linklike" id="suSkipTop" style="margin-left:auto">稍後再設定 →</button>
+    </div>
     <p class="kv" style="margin-top:0">這個程式不內建金鑰，要用你自己的廠商 API KEY。Key 只會存在這個瀏覽器、也只會送到你選的那家廠商。</p>
     <div id="suSyncHint" class="notice" style="display:none;margin:0 0 12px;border-color:var(--warn);box-shadow:none">
       <p class="small" style="margin:0"><strong>如果你在別台裝置已經設定過模型與衣櫃</strong>，先在那台用同一個帳號登入並按第 6 節的「立即同步」，把資料傳上雲端；然後回到這裡按下面的按鈕把它們抓下來。</p>
@@ -3086,12 +3089,14 @@ function suNeedsModelText(){
   return v==="custom" || (v==="replicate" && $("suModel").value==="__custom__");
 }
 $("suPullBtn").addEventListener("click", function(){ pullFromCloud(); });
-$("suSkipBtn").addEventListener("click", function(){
+function skipSetup(){
   $("setupModal").classList.remove("show");
   toast("沒有模型時還不能生成，但可以先到第 6 節看資料狀況、按「立即同步」。");
   try{ $("secBackup").scrollIntoView({behavior:"smooth",block:"start"}); }catch(e){}
   renderDataLine();
-});
+}
+$("suSkipBtn").addEventListener("click", skipSetup);
+$("suSkipTop").addEventListener("click", skipSetup);
 $("suVendor").addEventListener("change", syncSetupModels);
 $("suModel").addEventListener("change", function(){
   $("suModelText").style.display=suNeedsModelText()?"block":"none";
