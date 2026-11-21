@@ -195,11 +195,24 @@ hr.sep{border:none;border-top:1px solid var(--line);margin:16px 0}
     <p class="kv" style="margin-top:10px"><button class="linklike" id="authSwitchBtn">還沒帳號？建立一個</button></p>
     <p class="kv" style="font-size:.85rem;margin-top:6px" id="authHint">第一次用雲端、或昨天只用過本機帳號的話，請按上面的「建立一個」用同一組 Email 重建，本機資料會一起搬上去。</p>
     <p class="kv" style="font-size:.85rem;margin-top:12px">每次開啟都要重新登入；同一台裝置換人使用時，上一個人的資料會立刻從畫面清掉。換手機或電腦請用第 6 節的備份檔搬過去。</p>
-    <p class="kv" style="margin-top:4px"><button class="linklike" id="forgotPwBtn">忘記密碼？用 Email 重設</button></p>
+    <p class="kv" style="margin-top:4px"><button class="linklike" id="forgotPwBtn">忘記密碼？用 Email 重設</button>　<button class="linklike" id="delAccountLoginBtn" style="color:var(--err)">刪除帳戶</button></p>
   </div>
 </div>
 
 <!-- 重設密碼 -->
+<!-- 刪除帳戶 -->
+<div class="modal" id="deleteAccountModal">
+  <div class="mbox" style="max-width:420px">
+    <h3 style="margin:0 0 6px;font-family:'Noto Serif TC',serif">刪除帳戶</h3>
+    <p class="kv" style="margin-top:0">輸入 Email 和密碼確認身份。會永久刪除雲端帳號與所有雲端資料（照片、衣櫃、成品、多角度、模型），無法復原。這台裝置的本機資料會保留。</p>
+    <label class="fl" for="delEmail">Email</label><input type="email" id="delEmail" />
+    <label class="fl" for="delPw">密碼</label><input type="password" id="delPw" autocomplete="current-password" />
+    <p id="delErr" class="err-text" style="min-height:1.3em"></p>
+    <button class="btn danger" id="delConfirmBtn" style="width:100%">永久刪除帳戶</button>
+    <button class="btn ghost" id="delCancelBtn" style="width:100%;margin-top:8px">取消</button>
+  </div>
+</div>
+
 <div class="modal" id="resetPwModal">
   <div class="mbox" style="max-width:420px">
     <h3 style="margin:0 0 6px;font-family:'Noto Serif TC',serif">重設密碼</h3>
@@ -509,6 +522,11 @@ hr.sep{border:none;border-top:1px solid var(--line);margin:16px 0}
     <div class="main-photo" style="aspect-ratio:16/10"><img id="ePreview" alt="這件衣服的照片" /></div>
     <label class="btn small" for="eFile">點照片換一張（也可點這裡）</label>
     <input type="file" id="eFile" accept="image/*" hidden />
+    <div style="display:flex;gap:8px;margin-top:8px">
+      <input type="url" id="eImgUrl" placeholder="或貼照片網址抓圖（.jpg/.png 直連網址最快）" style="flex:1" />
+      <button class="btn small" id="eFetchBtn" style="white-space:nowrap">抓圖</button>
+    </div>
+    <p id="eFetchMsg" class="kv" style="min-height:1.3em"></p>
     <label class="fl">品牌名稱（可不填）</label><input type="text" id="eBrand" placeholder="例：UNIQLO、NIKE" />
     <label class="fl">衣服名稱</label><input type="text" id="eName" />
     <label class="fl">分類</label><select id="eCat"></select>
@@ -1539,6 +1557,7 @@ function renderWardrobe(){
 var editingWardrobe=null, editingImage=null;
 function openEditWardrobe(w){
   editingWardrobe=w; editingImage=null;
+  $("eImgUrl").value=""; $("eFetchMsg").textContent="";
   $("ePreview").src=w.dataUrl;
   $("eName").value=w.name; $("eBrand").value=w.brand||""; $("ePrice").value=w.price||""; fillCatSelect($("eCat"), w.category);
   var url=w.url||""; var note=w.note||"";
@@ -1552,6 +1571,30 @@ $("ePreview").addEventListener("click", function(){ $("eFile").click(); });
 $("eFile").addEventListener("change", async function(){
   var f=this.files&&this.files[0]; this.value=""; if(!f) return;
   editingImage=await fileToDataUrl(f,1400); $("ePreview").src=editingImage;
+});
+$("eFetchBtn").addEventListener("click", async function(){
+  var url=$("eImgUrl").value.trim(), msg=$("eFetchMsg");
+  if(!url){ msg.innerHTML="<span class='err-text'>先貼上圖片網址。</span>"; return; }
+  msg.textContent="抓圖中…";
+  var isImg=/\.(jpe?g|png|webp|gif|avif)(\?|#|$)/i.test(url);
+  try{
+    var imgUrl=url;
+    if(!isImg){
+      var r=await fetch(url); if(!r.ok) throw new Error("http "+r.status);
+      var html=await r.text();
+      var doc=new DOMParser().parseFromString(html,"text/html");
+      var og=doc.querySelector('meta[property="og:image"]');
+      if(!og) throw new Error("no og:image");
+      imgUrl=og.getAttribute("content");
+      if(imgUrl.indexOf("http")!==0) imgUrl=new URL(imgUrl,url).href;
+    }
+    editingImage=await imageUrlToDataUrl(imgUrl);
+    $("ePreview").src=editingImage;
+    $("eImgUrl").value="";
+    msg.innerHTML="<span class='ok-text'>抓到了，按「儲存修改」就會換成這張。</span>";
+  }catch(e){
+    msg.innerHTML="<span class='err-text'>抓不到圖：可能是跨域限制、或網址不是圖片。改用「點照片換一張」上傳，或換成 .jpg/.png 直連網址。</span>";
+  }
 });
 $("eUrl").addEventListener("input", function(){
   var u=$("eUrl").value.trim(), open=$("eUrlOpen");
@@ -3038,6 +3081,30 @@ $("recoverPhotosBtn").addEventListener("click", function(){ recoverPhotosFromClo
 $("clearLocalBtn").addEventListener("click", function(){ clearLocalData().catch(function(e){ toast("清除失敗："+(e.message||e)); }); });
 $("deleteAccountBtn").addEventListener("click", function(){ deleteAccount().catch(function(e){ toast("刪除失敗："+(e.message||e)); }); });
 $("forgotPwBtn").addEventListener("click", function(){ if(!syncEnabled()){ toast("純本機模式沒有雲端密碼，無法重設。"); return; } $("resetEmail").value=$("authEmail").value||""; $("resetErr").textContent=""; $("resetStep1").style.display="block"; $("resetStep2").style.display="none"; $("resetPwModal").classList.add("show"); });
+$("delAccountLoginBtn").addEventListener("click", function(){
+  if(!syncEnabled()){ toast("純本機模式沒有雲端帳號可刪。"); return; }
+  $("delEmail").value=$("authEmail").value||""; $("delPw").value=""; $("delErr").textContent="";
+  $("deleteAccountModal").classList.add("show");
+});
+$("delCancelBtn").addEventListener("click", function(){ $("deleteAccountModal").classList.remove("show"); });
+$("delConfirmBtn").addEventListener("click", async function(){
+  var email=$("delEmail").value.trim(), pw=$("delPw").value;
+  if(!email){ $("delErr").textContent="請填 Email。"; return; }
+  if(!pw){ $("delErr").textContent="請填密碼。"; return; }
+  var msg="確定要「永久刪除帳戶」嗎？\n\n會刪掉：雲端帳號、雲端照片／衣櫃／成品／多角度／模型，全部無法復原。\n\n這台裝置的本機資料會保留。";
+  if(!confirm(msg)) return;
+  $("delConfirmBtn").disabled=true; $("delConfirmBtn").textContent="刪除中…";
+  try{
+    await cloudLogin(email, pw);   /* 用密碼驗證身份，並拿到刪除用的 token */
+    await apiFetch("/api/account/delete",{method:"POST"});
+    syncToken=null;
+    $("deleteAccountModal").classList.remove("show"); $("delPw").value="";
+    try{ localStorage.removeItem("tryonStatic.lastEmail.v1"); }catch(e){}
+    logoutAccount();
+    toast("帳戶與雲端資料已刪除。");
+  }catch(e){ $("delErr").textContent=(e&&e.message)||String(e); }
+  finally{ $("delConfirmBtn").disabled=false; $("delConfirmBtn").textContent="永久刪除帳戶"; }
+});
 $("resetCloseBtn").addEventListener("click", function(){ $("resetPwModal").classList.remove("show"); });
 $("resetSendBtn").addEventListener("click", async function(){
   var email=$("resetEmail").value.trim();
