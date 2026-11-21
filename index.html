@@ -378,8 +378,10 @@ hr.sep{border:none;border-top:1px solid var(--line);margin:16px 0}
 
   <!-- 4. 多角度 -->
   <section class="block" id="secAngles">
-    <div class="sec-head"><h2>4．全身多角度底圖</h2><span class="hint">用目前的人物照片一次合成 3 組、每組四個角度（正面／斜前方／側面／背面，素色背景）。點任一組裡的任一張，就選定整組當試穿底圖；有 2 組以上時可以自組一組。中途有幾張失敗的話，按「重試失敗的角度」只補缺的那幾張，不會整組重跑。</span></div>
-    <div style="display:flex;gap:8px;flex-wrap:wrap">
+    <div class="sec-head"><h2>4．全身多角度底圖</h2><span class="hint">勾選要當基準的人物照片（可多選，最多 4 張），一次合成 3 組、每組四個角度（正面／左側／右側／後面），全部是全身照、素色背景。點任一組裡的任一張，就選定整組當試穿底圖；有 2 組以上時可以自組一組。中途有幾張失敗的話，按「重試失敗的角度」只補缺的那幾張，不會整組重跑。</span></div>
+    <p class="kv" id="angleRefHint" style="margin:2px 0 6px">勾選要當基準的底圖（點一下勾選／取消，最多 4 張）：</p>
+    <div class="grid photos" id="angleRefGrid"></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
       <button class="btn primary" id="angleBtn">生成 3 組多角度底圖</button>
       <button class="btn" id="angleRetryBtn" style="display:none">重試失敗的角度</button>
       <span class="hudslot" id="angleHudSlot"></span>
@@ -658,9 +660,9 @@ var PROVIDERS = {
 var CATEGORIES = ["上衣", "褲子", "裙子", "洋裝", "外套", "鞋子", "配件", "其他"];
 var ANGLES = [
   { key: "front", label: "正面", prompt: "front view, facing the camera" },
-  { key: "threequarter", label: "斜前方", prompt: "three-quarter front view, body turned about 35 degrees" },
-  { key: "side", label: "側面", prompt: "full side profile view" },
-  { key: "back", label: "背面", prompt: "back view, facing away from the camera" }
+  { key: "left", label: "左側", prompt: "left side profile view, showing the person's left side" },
+  { key: "right", label: "右側", prompt: "right side profile view, showing the person's right side" },
+  { key: "back", label: "後面", prompt: "back view, facing away from the camera" }
 ];
 </script>
 <script>
@@ -2215,6 +2217,30 @@ function groupComplete(g){
 function missingCount(g){
   var n=0; for(var i=0;i<4;i++){ if(!(g&&g.images&&g.images[i])) n++; } return n;
 }
+var angleRefIds=[];   /* 勾選當基準的底圖 id（最多 4 張） */
+function renderAngleRefs(){
+  var g=$("angleRefGrid"); if(!g) return;
+  g.innerHTML="";
+  state.photos.forEach(function(p){
+    var on=angleRefIds.indexOf(p.id)>=0;
+    var d=document.createElement("div"); d.className="card"+(on?" wardrobe-sel":"");
+    d.innerHTML="<div class='ph'><img alt=''/></div><div class='bd'><div class='nm'>"+esc(p.label||"人物照")+(on?"　<span class='badge on'>已選</span>":"")+"</div></div>";
+    d.querySelector("img").src=p.dataUrl;
+    d.style.cursor="pointer";
+    d.addEventListener("click", function(){
+      var i=angleRefIds.indexOf(p.id);
+      if(i>=0){ angleRefIds.splice(i,1); }
+      else{
+        if(angleRefIds.length>=4){ toast("模型一次最多吃 4 張參考圖。"); return; }
+        angleRefIds.push(p.id);
+      }
+      renderAngleRefs();
+    });
+    g.appendChild(d);
+  });
+  if(!state.photos.length) $("angleRefHint").textContent="還沒有照片，先到「1．人物照片」上傳。";
+  else $("angleRefHint").textContent="勾選要當基準的底圖（點一下勾選／取消，最多 4 張）：目前選了 "+angleRefIds.length+" 張。";
+}
 function anglePhotoOf(rec){
   if(!rec) return null;
   if(rec.photoId){ return state.photos.find(function(p){return p.id===rec.photoId;})||null; }
@@ -2311,8 +2337,15 @@ async function runAngles(onlyFails){
     jobs=pendingAngleJobs();
     if(!jobs.length){ toast("目前沒有缺的角度要重試。"); return; }
   }else{
-    var p=selectedPhoto();
-    if(!p){ toast("先在人物照片選一張當原始照片。"); return; }
+    /* 以使用者勾選的多張底圖當基準（沒勾就退回「目前選定的那一張」） */
+    var refPhotos=angleRefIds.map(function(id){ return state.photos.find(function(p){return p.id===id;})||null; }).filter(Boolean);
+    if(!refPhotos.length){
+      var sp=selectedPhoto();
+      if(sp) refPhotos=[sp];
+    }
+    if(!refPhotos.length){ toast("先勾選至少一張底圖當基準。"); return; }
+    var refImages=refPhotos.map(function(p){ return p.dataUrl; });
+    var p=refPhotos[0];
     /* 清掉完全空白的舊草稿，避免愈積愈多；已經有幾張圖的草稿留著，之後可以重試補齊 */
     var emptyIds=state.angleGroups.filter(function(g){
       return !g.custom && !(g.images||[]).some(Boolean) && !groupComplete(g);
@@ -2342,10 +2375,10 @@ async function runAngles(onlyFails){
       $("angleStatus").innerHTML="<span class='err-text'>找不到這組用的原始人物照片（可能已被刪除），請刪掉這組後重新生成。</span>";
       aborted=true; break;
     }
-    var prompt="Full-body studio photo of the same person as the reference image, "+a.prompt+", standing naturally, wearing exactly the same outfit as in the reference, plain solid light-gray background, even studio lighting, photorealistic, keep the face and body identical to the reference person.";
+    var prompt="Full-body studio photo of the same person as the reference image(s), "+a.prompt+", standing naturally, the whole body visible from head to feet (full body, never cropped, never half-body), wearing exactly the same outfit as in the reference, plain solid light-gray background, even studio lighting, photorealistic, keep the face and body identical to the reference person.";
     hudSet(((done+0.1)/total)*100, done+"/"+total+" 張（正在生成 "+a.label+"）", ((done+0.9)/total)*100);
     try{
-      var out=await generateWithActiveModel([srcPhoto.dataUrl],prompt);
+      var out=await generateWithActiveModel(refImages,prompt);
       var finalUrl=out.indexOf("data:")===0?out:await imageUrlToDataUrl(out).catch(function(){return out;});
       rec.images[job.angle]=finalUrl;
       await idbPut("angleGroups",rec);
@@ -2908,7 +2941,7 @@ function renderTrash(){
 
 function renderAll(){
   renderPhotos(); renderWardrobe(); renderResults(); renderAngleGroups(); renderModels();
-  renderTryonSummary(); refreshPwSetup(); renderTrash();
+  renderTryonSummary(); refreshPwSetup(); renderTrash(); renderAngleRefs();
 }
 function stateArrayOf(kind){
   if(kind==="photos") return state.photos;
