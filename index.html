@@ -185,6 +185,11 @@ hr.sep{border:none;border-top:1px solid var(--line);margin:16px 0}
       <label class="fl" for="authPw2">再輸入一次</label>
       <input type="password" id="authPw2" autocomplete="new-password" placeholder="再輸入一次" />
     </div>
+    <div id="authSyncWrap">
+      <label class="fl" for="authSyncBase">同步伺服器網址（留空＝只用這台裝置）</label>
+      <input type="url" id="authSyncBase" placeholder="https://tryon-sync.你的帳號.workers.dev" />
+      <p class="kv" style="font-size:.82rem;margin:4px 0 0">填了就用雲端帳號登入，照片、衣櫃、成品、多角度與模型會自動同步到其他裝置；留空就是純本機。</p>
+    </div>
     <p id="authErr" class="err-text" style="min-height:1.3em"></p>
     <button class="btn primary" id="authGoBtn" style="width:100%">登入</button>
     <p class="kv" style="margin-top:10px"><button class="linklike" id="authSwitchBtn">還沒帳號？建立一個</button></p>
@@ -412,6 +417,11 @@ hr.sep{border:none;border-top:1px solid var(--line);margin:16px 0}
       <input type="file" id="packImportFile" accept=".tryonpack,.json,application/json" hidden />
     </div>
     <p class="kv" id="packMsg" style="min-height:1.3em;margin-top:10px"></p>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:4px 0 10px">
+      <button class="btn small" id="syncNowBtn">立即同步</button>
+      <button class="btn small ghost" id="syncBaseBtn">設定同步伺服器</button>
+      <span class="kv" id="syncStatus">沒有設定同步伺服器（只用本機）</span>
+    </div>
     <p class="kv">備份檔一律用你自己設的密碼整包加密（PBKDF2＋AES-GCM），裡面含 API 金鑰與全部照片，請當成私密檔案保管。要匯入別人的衣櫃與模型：請對方把備份檔傳給你，在這裡選檔後由<strong>對方在你這台裝置輸入他的密碼</strong>，匯入完成程式會立刻清掉密碼欄位。</p>
   </section>
 
@@ -716,11 +726,17 @@ async function idbAll(store){
     rq.onerror=function(){ rej(rq.error); };
   });
 }
-async function idbPut(store,val){
+async function idbPut(store,val,opts){
+  opts=opts||{};
   /* 同一台裝置多人使用：每筆資料都標上擁有者，讀取時只取自己的 */
   if(state.userId && val && !val.owner) val.owner=state.userId;
+  /* 本機這次改動的時間（同步比對用）；從雲端套用下來的資料保留原本的時間 */
+  if(val && !opts.internal) val.updatedAt=Date.now();
   var db=await openDb(); return new Promise(function(res,rej){ var rq=db.transaction(store,"readwrite").objectStore(store).put(val); rq.onsuccess=function(){res();}; rq.onerror=function(){rej(rq.error);}; }); }
-async function idbDel(store,id){ var db=await openDb(); return new Promise(function(res,rej){ var rq=db.transaction(store,"readwrite").objectStore(store).delete(id); rq.onsuccess=function(){res();}; rq.onerror=function(){rej(rq.error);}; }); }
+async function idbDel(store,id,opts){
+  opts=opts||{};
+  if(!opts.internal) addTomb(store,id);
+  var db=await openDb(); return new Promise(function(res,rej){ var rq=db.transaction(store,"readwrite").objectStore(store).delete(id); rq.onsuccess=function(){res();}; rq.onerror=function(){rej(rq.error);}; }); }
 
 /* ============ 狀態（設定存 localStorage） ============ */
 var LS_MODELS="tryonStatic.models.v1", LS_PWHASH="tryonStatic.pwHash.v1", LS_ACTIVE="tryonStatic.activeModel.v1";
@@ -760,6 +776,7 @@ function saveModels(){
   localStorage.setItem(LS_MODELS, JSON.stringify(others.concat(mine)));
   var k=LS_ACTIVE+"."+(state.userId||"guest");
   if(state.activeModelId) localStorage.setItem(k,state.activeModelId); else localStorage.removeItem(k);
+  if(!syncApplying){ setModelsUpdatedAt(Date.now()); scheduleSync(); }
 }
 function pwHash(){ return localStorage.getItem(LS_PWHASH)||null; }
 function activeModel(){ return state.models.find(function(m){return m.id===state.activeModelId;})||null; }
@@ -2397,6 +2414,7 @@ async function loadUserData(){
 }
 async function startUserSession(acc,pw){
   state.userId=acc.id; state.accountEmail=acc.email; state.unlocked=true;
+  try{ localStorage.setItem("tryonStatic.lastLocalUser.v1", acc.id); }catch(e){}
   sessionKey = hasSubtle()? await deriveKek(pw, acc.salt) : null;
   await loadUserData();
   if(sessionKey) await loadKeysFromStorage();   /* 用帳號密碼把金鑰解回來 */
@@ -2410,6 +2428,8 @@ async function startUserSession(acc,pw){
   toast("已登入："+acc.email);
 }
 function logoutAccount(){
+  if(syncToken){ try{ apiFetch("/api/logout",{method:"POST"}); }catch(e){} }
+  syncToken=null;
   sessionKey=null;
   state.userId=null; state.accountEmail=""; state.unlocked=false;
   state.photos=[]; state.wardrobe=[]; state.results=[]; state.angleGroups=[]; state.models=[];
@@ -2418,7 +2438,10 @@ function logoutAccount(){
   $("whoWrap").style.display="none"; $("whoami").textContent="";
   renderPhotos(); renderWardrobe(); renderResults(); renderAngleGroups(); renderModels(); renderTryonSummary();
   document.documentElement.classList.add("auth-pending");
-  setAuthMode(loadAccounts().length?"login":"register");
+  var wasUser=state.accountEmail;
+  var hasLoginTarget=loadAccounts().length||syncEnabled();
+  setAuthMode(hasLoginTarget?"login":"register");
+  if(wasUser && $("authEmail")) $("authEmail").value=wasUser;
   showAuth();
 }
 $("authSwitchBtn").addEventListener("click", function(){ setAuthMode(authMode==="login"?"register":"login"); });
@@ -2430,14 +2453,28 @@ async function submitAuth(){
   if(!pw){ $("authErr").textContent="請填密碼。"; return; }
   $("authGoBtn").disabled=true;
   try{
-    var acc;
-    if(authMode==="register"){
-      if(pw!==$("authPw2").value){ $("authErr").textContent="兩次輸入的密碼不一樣。"; $("authGoBtn").disabled=false; return; }
-      acc=await createAccount(email,pw);
+    var base=($("authSyncBase")&&$("authSyncBase").value||"").trim();
+    if(base!==syncBase()) setSyncBase(base);
+    if(syncEnabled()){
+      if(authMode==="register"){
+        if(pw!==$("authPw2").value){ $("authErr").textContent="兩次輸入的密碼不一樣。"; $("authGoBtn").disabled=false; return; }
+        await cloudRegister(email,pw);
+      } else {
+        await cloudLogin(email,pw);
+      }
+      await startCloudSession(pw);
+      try{ localStorage.setItem("tryonStatic.lastEmail.v1", email); }catch(e){}
     } else {
-      acc=await loginAccount(email,pw);
+      var acc;
+      if(authMode==="register"){
+        if(pw!==$("authPw2").value){ $("authErr").textContent="兩次輸入的密碼不一樣。"; $("authGoBtn").disabled=false; return; }
+        acc=await createAccount(email,pw);
+      } else {
+        acc=await loginAccount(email,pw);
+      }
+      await startUserSession(acc,pw);
+      try{ localStorage.setItem("tryonStatic.lastEmail.v1", email); }catch(e){}
     }
-    await startUserSession(acc,pw);
   }catch(e){
     $("authErr").textContent=e.message||String(e);
   }
@@ -2446,6 +2483,240 @@ async function submitAuth(){
 $("authGoBtn").addEventListener("click", submitAuth);
 $("authPw").addEventListener("keydown", function(e){ if(e.key==="Enter") submitAuth(); });
 $("authPw2").addEventListener("keydown", function(e){ if(e.key==="Enter") submitAuth(); });
+
+/* ============ 雲端同步（Cloudflare Worker ＋ D1 ＋ R2） ============ */
+/* 沒有填伺服器網址時整段是空轉，App 照舊只用本機。
+   有填的話：登入走雲端帳號、金鑰用密碼派生（伺服器只看到密文）、資料逐筆比對 updatedAt 做 last-write-wins，
+   刪除用墓碑（tombstone）同步，照片走 R2。 */
+var LS_SYNC_BASE="tryonStatic.syncBase.v1", LS_TOMBS="tryonStatic.tombstones.v1", LS_MODELS_AT="tryonStatic.modelsAt.v1";
+var SYNC_STORES=["photos","wardrobe","results","angleGroups"];
+var DEFAULT_SYNC_BASE="https://tryon-sync.neil518-tang.workers.dev";
+var syncToken=null, syncTimer=null, syncBusy=false, syncApplying=false;
+function syncBase(){ try{ return (localStorage.getItem(LS_SYNC_BASE)||"").replace(/\/+$/,""); }catch(e){ return ""; } }
+function setSyncBase(v){ try{ if(v) localStorage.setItem(LS_SYNC_BASE,String(v).replace(/\/+$/,"")); else localStorage.removeItem(LS_SYNC_BASE); }catch(e){} refreshSyncStatus(); }
+function syncEnabled(){ return !!syncBase(); }
+function setSyncStatus(text,cls){ var el=$("syncStatus"); if(!el) return; el.className="kv"+(cls?" "+cls:""); el.textContent=text; }
+function refreshSyncStatus(){
+  if(!syncEnabled()){ setSyncStatus("沒有設定同步伺服器（只用本機）"); return; }
+  setSyncStatus(syncToken?("已連線："+syncBase()):("已設定伺服器，登入後才會同步"));
+}
+function modelsUpdatedAtOf(){
+  try{ return Number(localStorage.getItem(LS_MODELS_AT+"."+(state.userId||"guest"))||0)||0; }catch(e){ return 0; }
+}
+function setModelsUpdatedAt(t){ try{ localStorage.setItem(LS_MODELS_AT+"."+(state.userId||"guest"), String(t)); }catch(e){} }
+function loadTombs(){ try{ return JSON.parse(localStorage.getItem(LS_TOMBS)||"[]"); }catch(e){ return []; } }
+function saveTombs(list){ try{ localStorage.setItem(LS_TOMBS, JSON.stringify(list.slice(-500))); }catch(e){} }
+function addTomb(kind,id){ if(!syncEnabled()||!syncToken) return; var t=loadTombs(); if(!t.some(function(x){return x.kind===kind&&x.id===id;})) { t.push({kind:kind,id:id,at:Date.now()}); saveTombs(t); } }
+
+function hexFromBuf(buf){ return Array.from(new Uint8Array(buf)).map(function(b){return b.toString(16).padStart(2,"0");}).join(""); }
+function hexToU8(hex){ var u=new Uint8Array(hex.length/2); for(var i=0;i<u.length;i++) u[i]=parseInt(hex.substr(i*2,2),16); return u; }
+async function pbkdf2Hex(secret,saltHex){
+  if(!hasSubtle()) throw new Error("這個瀏覽器不支援加密，請用 https 開啟");
+  var k=await crypto.subtle.importKey("raw", new TextEncoder().encode(secret), "PBKDF2", false, ["deriveBits"]);
+  var bits=await crypto.subtle.deriveBits({name:"PBKDF2", salt:hexToU8(saltHex), iterations:210000, hash:"SHA-256"}, k, 256);
+  return hexFromBuf(bits);
+}
+async function deriveKeyFromHexSalt(pw,saltHex){
+  var k=await crypto.subtle.importKey("raw", new TextEncoder().encode(pw), "PBKDF2", false, ["deriveKey"]);
+  return await crypto.subtle.deriveKey({name:"PBKDF2", salt:hexToU8(saltHex), iterations:210000, hash:"SHA-256"}, k, {name:"AES-GCM",length:256}, false, ["encrypt","decrypt"]);
+}
+async function apiFetch(path,opts){
+  opts=opts||{};
+  var headers=Object.assign({},opts.headers||{});
+  if(syncToken) headers["Authorization"]="Bearer "+syncToken;
+  var body=opts.body;
+  if(opts.json!==undefined){ headers["Content-Type"]="application/json"; body=JSON.stringify(opts.json); }
+  var res;
+  try{ res=await fetch(syncBase()+path,{method:opts.method||"GET", headers:headers, body:body}); }
+  catch(e){ throw new Error("連不到同步伺服器（網路或跨域被擋）："+(e.message||e)); }
+  var data=null;
+  try{ data=await res.json(); }catch(e){}
+  if(!res.ok){ var err=new Error((data&&data.error)||("伺服器回應 "+res.status)); err.status=res.status; throw err; }
+  return data;
+}
+async function cloudRegister(email,pw){
+  var salt=await apiFetch("/api/salt?email="+encodeURIComponent(email));
+  if(salt.exists) throw new Error("這個 Email 已經註冊過，請直接登入。");
+  var authSalt=hexFromBuf(crypto.getRandomValues(new Uint8Array(16)));
+  var encSalt=hexFromBuf(crypto.getRandomValues(new Uint8Array(16)));
+  var authHash=await pbkdf2Hex(pw,authSalt);
+  var r=await apiFetch("/api/register",{method:"POST",json:{email:email,authHash:authHash,authSalt:authSalt,encSalt:encSalt}});
+  syncToken=r.token; state.userId=r.userId; state.accountEmail=r.email;
+  sessionKey=await deriveKeyFromHexSalt(pw,r.encSalt);
+}
+async function cloudLogin(email,pw){
+  var salt=await apiFetch("/api/salt?email="+encodeURIComponent(email));
+  if(!salt.exists) throw new Error("雲端沒有這個帳號，請先建立。");
+  var authHash=await pbkdf2Hex(pw,salt.authSalt);
+  var r=await apiFetch("/api/login",{method:"POST",json:{email:email,authHash:authHash}});
+  syncToken=r.token; state.userId=r.userId; state.accountEmail=r.email;
+  sessionKey=await deriveKeyFromHexSalt(pw,r.encSalt);
+}
+function renderAll(){
+  renderPhotos(); renderWardrobe(); renderResults(); renderAngleGroups(); renderModels();
+  renderTryonSummary(); refreshPwSetup();
+}
+function stateArrayOf(kind){
+  if(kind==="photos") return state.photos;
+  if(kind==="wardrobe") return state.wardrobe;
+  if(kind==="results") return state.results;
+  if(kind==="angleGroups") return state.angleGroups;
+  return null;
+}
+function findRec(kind,id){ var a=stateArrayOf(kind); if(!a) return null; return a.find(function(x){return x.id===id;})||null; }
+function localSyncItems(){
+  var out=[];
+  SYNC_STORES.forEach(function(kind){
+    stateArrayOf(kind).forEach(function(rec){
+      var data={}; for(var k in rec){ if(k!=="dataUrl" && k!=="owner") data[k]=rec[k]; }
+      if(rec.dataUrl) data.hasImg=1;
+      out.push({kind:kind,id:rec.id,updatedAt:rec.updatedAt||rec.createdAt||0,deleted:0,data:data});
+    });
+  });
+  out.push({kind:"settings",id:"models",updatedAt:modelsUpdatedAtOf(),deleted:0,
+    data:{models:rawModels().filter(function(m){return m.owner===state.userId;})}});
+  return out;
+}
+function blobToDataUrl(blob){
+  return blob.arrayBuffer().then(function(buf){
+    var u=new Uint8Array(buf), bin="";
+    for(var i=0;i<u.length;i++) bin+=String.fromCharCode(u[i]);
+    return "data:"+(blob.type||"image/jpeg")+";base64,"+btoa(bin);
+  });
+}
+async function downloadBlob(kind,id){
+  try{
+    var res=await fetch(syncBase()+"/api/blob/"+kind+"/"+id,{headers:{Authorization:"Bearer "+syncToken}});
+    if(!res.ok) return null;
+    return await blobToDataUrl(await res.blob());
+  }catch(e){ return null; }
+}
+function dataUrlToBytes(u){
+  var m=/^data:([^;,]*)(;base64)?,/.exec(u||""); if(!m) return null;
+  var type=m[1]||"image/jpeg", body=u.slice(m[0].length);
+  if(m[2]){
+    var bin=atob(body), arr=new Uint8Array(bin.length);
+    for(var i=0;i<bin.length;i++) arr[i]=bin.charCodeAt(i);
+    return { type:type, bytes:arr };
+  }
+  return { type:type, bytes:new TextEncoder().encode(decodeURIComponent(body)) };
+}
+async function uploadBlob(kind,id,dataUrl){
+  var d=dataUrlToBytes(dataUrl); if(!d) return;
+  await apiFetch("/api/blob/"+kind+"/"+id,{method:"PUT",headers:{"Content-Type":d.type},body:d.bytes});
+}
+async function applyRemoteItem(it){
+  if(it.kind==="settings" && it.id==="models"){
+    if((it.updatedAt||0)<=modelsUpdatedAtOf()) return;
+    var incoming=(it.data&&it.data.models)||[];
+    var others=rawModels().filter(function(m){ return m.owner!==state.userId; });
+    var mine=incoming.map(function(m){ var c={}; for(var k in m){ if(k!=="apiKey") c[k]=m[k]; } c.owner=state.userId; return c; });
+    syncApplying=true;
+    try{ localStorage.setItem(LS_MODELS, JSON.stringify(others.concat(mine))); setModelsUpdatedAt(it.updatedAt||0); loadSettings(); await loadKeysFromStorage(); }
+    finally{ syncApplying=false; }
+    return;
+  }
+  var arr=stateArrayOf(it.kind); if(!arr) return;
+  var idx=arr.findIndex(function(x){return x.id===it.id;});
+  if(it.deleted){
+    if(idx>=0){ await idbDel(it.kind,it.id,{internal:true}); arr.splice(idx,1); }
+    return;
+  }
+  if(idx>=0 && (arr[idx].updatedAt||0)>=(it.updatedAt||0)) return;
+  var rec=Object.assign({},it.data||{});
+  delete rec.hasImg;
+  rec.id=it.id; rec.owner=state.userId; rec.updatedAt=it.updatedAt||0;
+  if(it.data && it.data.hasImg){ var d=await downloadBlob(it.kind,it.id); if(d) rec.dataUrl=d; else if(idx>=0 && arr[idx].dataUrl) rec.dataUrl=arr[idx].dataUrl; }
+  if(idx>=0) arr[idx]=rec; else arr.push(rec);
+  await idbPut(it.kind,rec,{internal:true});
+}
+async function syncNow(opts){
+  opts=opts||{};
+  if(!syncEnabled()){ if(!opts.silent) toast("還沒有設定同步伺服器（在登入畫面或第 6 節設定）。"); return; }
+  if(!syncToken){ if(!opts.silent) toast("請先登入雲端帳號。"); return; }
+  if(syncBusy) return;
+  syncBusy=true; setSyncStatus("同步中…");
+  try{
+    var remote=await apiFetch("/api/sync");
+    var rmap={}, rblobs={};
+    (remote.items||[]).forEach(function(it){ rmap[it.kind+"|"+it.id]=it; });
+    (remote.blobs||[]).forEach(function(b){ rblobs[b.kind+"|"+b.id]=b; });
+    var list=remote.items||[];
+    for(var i=0;i<list.length;i++) await applyRemoteItem(list[i]);
+    var local=localSyncItems(), push=[], blobJobs=[];
+    local.forEach(function(it){
+      if(it.kind==="settings" && !it.updatedAt) return;         /* 沒動過模型就不用推 */
+      var r=rmap[it.kind+"|"+it.id];
+      if(!r || (it.updatedAt||0)>(r.updatedAt||0)){
+        push.push(it);
+        if(it.data && it.data.hasImg){
+          var rec=findRec(it.kind,it.id);
+          if(rec && rec.dataUrl) blobJobs.push({kind:it.kind,id:it.id,dataUrl:rec.dataUrl});
+        }
+      }
+    });
+    loadTombs().forEach(function(t){ push.push({kind:t.kind,id:t.id,updatedAt:t.at,deleted:1,data:null}); });
+    for(var p=0;p<push.length;p+=100) await apiFetch("/api/sync",{method:"POST",json:{items:push.slice(p,p+100)}});
+    for(var b=0;b<blobJobs.length;b++) await uploadBlob(blobJobs[b].kind,blobJobs[b].id,blobJobs[b].dataUrl);
+    if(push.length) saveTombs([]);
+    renderAll();
+    setSyncStatus("上次同步："+new Date().toLocaleTimeString("zh-TW")+"（上傳 "+push.length+"、圖片 "+blobJobs.length+"）");
+  }catch(e){
+    var msg=(e&&e.status===401)?"登入已過期，請重新登入":(e.message||String(e));
+    setSyncStatus("同步失敗："+msg,"err-text");
+    if(!opts.silent) toast("同步失敗："+msg);
+  }
+  syncBusy=false;
+}
+function scheduleSync(){
+  if(!syncEnabled()||!syncToken||syncApplying) return;
+  clearTimeout(syncTimer);
+  syncTimer=setTimeout(function(){ syncNow({silent:true}); }, 1500);
+}
+$("syncNowBtn").addEventListener("click", function(){ syncNow({}); });
+$("syncBaseBtn").addEventListener("click", function(){
+  var v=prompt("貼上同步伺服器網址（例：https://tryon-sync.你的帳號.workers.dev）\n留空按確定＝清除，只用本機。", syncBase());
+  if(v===null) return;
+  setSyncBase(v.trim());
+  toast(syncBase()?("已設定同步伺服器："+syncBase()):"已清除同步伺服器，回到只用本機");
+});
+async function adoptLocalIntoCloud(){
+  /* 換成雲端帳號時，這台裝置原本（本機帳號或沒有帳號時）的資料不要變孤兒：
+     第一次登入這個雲端帳號時，把它們改成這個帳號的，之後就會同步上去。 */
+  var key="tryonStatic.cloudAdopt."+state.userId;
+  try{ if(localStorage.getItem(key)) return 0; }catch(e){}
+  var lastLocal=""; try{ lastLocal=localStorage.getItem("tryonStatic.lastLocalUser.v1")||""; }catch(e){}
+  var n=0;
+  for(var i=0;i<SYNC_STORES.length;i++){
+    var rows=await idbAll(SYNC_STORES[i]);
+    for(var j=0;j<rows.length;j++){
+      var r=rows[j];
+      if(!r.owner || (lastLocal && r.owner===lastLocal)){
+        r.owner=state.userId; r.updatedAt=Date.now();
+        await idbPut(SYNC_STORES[i],r,{internal:true}); n++;
+      }
+    }
+  }
+  var all=rawModels(), changed=false;
+  all.forEach(function(m){ if(!m.owner || (lastLocal && m.owner===lastLocal)){ m.owner=state.userId; changed=true; n++; } });
+  if(changed){ localStorage.setItem(LS_MODELS, JSON.stringify(all)); setModelsUpdatedAt(Date.now()); }
+  try{ localStorage.setItem(key,"1"); }catch(e){}
+  return n;
+}
+async function startCloudSession(pw){
+  state.unlocked=true;
+  var moved=await adoptLocalIntoCloud();
+  await loadUserData();
+  if(sessionKey) await loadKeysFromStorage();
+  await syncNow({silent:true});
+  $("authOverlay").classList.remove("show");
+  document.documentElement.classList.remove("auth-pending");
+  $("whoWrap").style.display="inline"; $("whoami").textContent=state.accountEmail;
+  $("authPw").value=""; $("authPw2").value=""; $("authErr").textContent="";
+  renderAll(); refreshSyncStatus();
+  if(setupNeeded()) openSetup();
+  toast("已登入並同步："+state.accountEmail+(moved?("（已把這台裝置原本的 "+moved+" 筆資料搬進雲端帳號）"):""));
+}
 
 /* ============ 備份、匯出與匯入 ============ */
 /* 沒有後端也能把資料帶到別的裝置：整包資料（含照片與金鑰）用使用者自訂的密碼加密成一個檔案。
@@ -2723,7 +2994,13 @@ $("exportBtn").addEventListener("click", function(){
   fillCatSelect($("wCat"), "");
   refreshLock(); refreshPwSetup();
   /* 每次開啟都要登入：登入成功後才載入這個人的資料（startUserSession） */
-  setAuthMode(loadAccounts().length?"login":"register");
+  if($("authSyncBase")) $("authSyncBase").value=syncBase()||DEFAULT_SYNC_BASE;
+  /* 這台裝置用過就預設登入，沒用過就預設建立帳號 */
+  var lastEmail="";
+  try{ lastEmail=localStorage.getItem("tryonStatic.lastEmail.v1")||""; }catch(e){}
+  if(lastEmail && $("authEmail")) $("authEmail").value=lastEmail;
+  setAuthMode((lastEmail||loadAccounts().length)?"login":"register");
+  refreshSyncStatus();
   showAuth();
 })();
 </script>
