@@ -194,7 +194,33 @@ hr.sep{border:none;border-top:1px solid var(--line);margin:16px 0}
     <button class="btn primary" id="authGoBtn" style="width:100%">登入</button>
     <p class="kv" style="margin-top:10px"><button class="linklike" id="authSwitchBtn">還沒帳號？建立一個</button></p>
     <p class="kv" style="font-size:.85rem;margin-top:6px" id="authHint">第一次用雲端、或昨天只用過本機帳號的話，請按上面的「建立一個」用同一組 Email 重建，本機資料會一起搬上去。</p>
-    <p class="kv" style="font-size:.85rem;margin-top:12px">每次開啟都要重新登入；同一台裝置換人使用時，上一個人的資料會立刻從畫面清掉。換手機或電腦請用第 6 節的備份檔搬過去。忘記密碼沒有救回機制。</p>
+    <p class="kv" style="font-size:.85rem;margin-top:12px">每次開啟都要重新登入；同一台裝置換人使用時，上一個人的資料會立刻從畫面清掉。換手機或電腦請用第 6 節的備份檔搬過去。</p>
+    <p class="kv" style="margin-top:4px"><button class="linklike" id="forgotPwBtn">忘記密碼？用 Email 重設</button></p>
+  </div>
+</div>
+
+<!-- 重設密碼 -->
+<div class="modal" id="resetPwModal">
+  <div class="mbox" style="max-width:420px">
+    <h3 style="margin:0 0 6px;font-family:'Noto Serif TC',serif">重設密碼</h3>
+    <div id="resetStep1">
+      <p class="kv" style="margin-top:0">輸入你註冊的 Email，會寄一封 6 位數驗證碼。</p>
+      <label class="fl" for="resetEmail">Email</label>
+      <input type="email" id="resetEmail" placeholder="you@example.com" />
+      <button class="btn primary" id="resetSendBtn" style="width:100%;margin-top:8px">寄驗證碼</button>
+    </div>
+    <div id="resetStep2" style="display:none">
+      <label class="fl" for="resetCode">驗證碼（6 位數字）</label>
+      <input type="text" id="resetCode" inputmode="numeric" maxlength="6" autocomplete="one-time-code" />
+      <label class="fl" for="resetNewPw">新密碼（至少 4 個字元）</label>
+      <input type="password" id="resetNewPw" autocomplete="new-password" />
+      <label class="fl" for="resetNewPw2">再輸入一次</label>
+      <input type="password" id="resetNewPw2" autocomplete="new-password" />
+      <button class="btn primary" id="resetConfirmBtn" style="width:100%;margin-top:8px">重設密碼</button>
+    </div>
+    <p id="resetErr" class="err-text" style="min-height:1.3em"></p>
+    <p class="kv" style="font-size:.85rem">重設後照片、衣櫃、成品會保留；模型 API KEY 因為是用舊密碼加密的，需要重新輸入。</p>
+    <button class="btn ghost" id="resetCloseBtn" style="width:100%">關閉</button>
   </div>
 </div>
 
@@ -430,6 +456,7 @@ hr.sep{border:none;border-top:1px solid var(--line);margin:16px 0}
       <button class="btn small" id="rescueBtn">找回這台裝置的資料</button>
       <button class="btn small" id="recoverPhotosBtn">從雲端救回資料（照片／衣櫃／成品）</button>
       <button class="btn small danger" id="clearLocalBtn">清除本機資料</button>
+      <button class="btn small danger" id="deleteAccountBtn">刪除帳戶</button>
       <span class="kv" id="syncStatus">沒有設定同步伺服器（只用本機）</span>
     </div>
     <p class="kv" id="dataLine" style="margin:0 0 10px">這台裝置的資料：計算中…</p>
@@ -674,8 +701,8 @@ async function loadKeysFromStorage(){
   for(var i=0;i<state.models.length;i++){
     var m=state.models[i];
     if(m.keyEnc){
-      try{ m.apiKey=await decryptSecret(m.keyEnc); if(!m.apiKey) bad.push(m.modelName); }
-      catch(e){ m.apiKey=""; bad.push(m.modelName); }
+      try{ m.apiKey=await decryptSecret(m.keyEnc); if(!m.apiKey){ m.keyEnc=null; bad.push(m.modelName); } }
+      catch(e){ m.apiKey=""; m.keyEnc=null; bad.push(m.modelName); }
     } else if(m.apiKey && sessionKey){
       m.keyEnc=await encryptSecret(m.apiKey);   /* 舊版明碼資料：當場加密 */
     }
@@ -1289,7 +1316,7 @@ function renderModels(){
       "<div class='mono'>"+esc(m.endpoint)+"</div>"+
       (m.workerUrl?"<div class='kv'>Worker 代理："+esc(m.workerUrl)+"</div>":(m.vendor==="cloudflare"?"<div class='kv warn-text'>沒有 Worker 代理：從瀏覽器直呼會被 Cloudflare 擋掉</div>":""))+
       (m.accountId?"<div class='kv'>Account ID："+esc(m.accountId)+"</div>":"")+
-      "<div class='kv'>API KEY："+esc(maskKey(m.apiKey))+"　"+(m.keyEnc?"<span class='badge on'>已加密儲存</span>":"<span class='badge no'>明碼儲存</span>")+"</div>"+
+      "<div class='kv'>API KEY："+(m.apiKey?esc(maskKey(m.apiKey)):"<span class='err-text'>（未設定）</span>")+"　"+((m.keyEnc&&!m.apiKey)?"<span class='badge no'>需重貼金鑰</span>":(m.keyEnc?"<span class='badge on'>已加密儲存</span>":"<span class='badge no'>明碼儲存</span>"))+"</div>"+
       (m.keyEnc?"":"<div class='kv warn-text'>這組金鑰是明碼存在瀏覽器裡。設定解鎖密碼之後，金鑰會自動改成密文儲存。</div>")+
       "<div style='display:flex;gap:8px;margin-top:8px;flex-wrap:wrap'>"+
       "<button class='btn small' data-act='edit'"+(m.id===editingModelId?" disabled":"")+">"+(m.id===editingModelId?"編輯中":"編輯")+"</button>"+
@@ -1360,7 +1387,7 @@ $("photoUpload").addEventListener("change", async function(){
     if(state.photos.length>=15){ toast("照片庫已滿（15 張），先刪掉一些再上傳。"); break; }
     try{
       var d=await fileToDataUrl(files[i],1600);
-      var rec={id:uid(), dataUrl:d, createdAt:Date.now()};
+      var rec={id:uid(), dataUrl:d, createdAt:Date.now(), fp:await dataUrlFingerprint(d)};
       await idbPut("photos",rec); state.photos.push(rec); state.selectedPhotoId=rec.id; state.activeAngleGroupId=null;
     }catch(e){ toast("有一張照片讀不到，已跳過。"); }
   }
@@ -1374,6 +1401,7 @@ $("photoReplaceFile").addEventListener("change", async function(){
   var f=this.files&&this.files[0]; this.value=""; if(!f) return;
   var sel=selectedPhoto(); if(!sel) return;
   sel.dataUrl=await fileToDataUrl(f,1600);
+  sel.fp=await dataUrlFingerprint(sel.dataUrl);
   await idbPut("photos",sel); renderPhotos(); renderTryonSummary();
 });
 $("photoDeleteBtn").addEventListener("click", async function(){
@@ -2464,7 +2492,7 @@ async function startUserSession(acc,pw){
   try{ localStorage.setItem("tryonStatic.lastLocalUser.v1", acc.id); }catch(e){}
   sessionKey = hasSubtle()? await deriveKek(pw, acc.salt) : null;
   await loadUserData();
-  if(sessionKey) await loadKeysFromStorage();   /* 用帳號密碼把金鑰解回來 */
+  if(sessionKey){ var badK=await loadKeysFromStorage(); if(badK && badK.length) toast("有 "+badK.length+" 組模型金鑰解不開（可能密碼重設過），請到模型設定重新輸入。"); }
   $("authOverlay").classList.remove("show");
   document.documentElement.classList.remove("auth-pending");
   $("whoWrap").style.display="inline"; $("whoami").textContent=acc.email;
@@ -2614,6 +2642,14 @@ function saveTombs(list){ try{ localStorage.setItem(LS_TOMBS, JSON.stringify(lis
 function addTomb(kind,id,data){ if(!syncEnabled()||!syncToken) return; var t=loadTombs(); if(!t.some(function(x){return x.kind===kind&&x.id===id;})) { t.push({kind:kind,id:id,at:Date.now(),data:data}); saveTombs(t); } }
 
 function hexFromBuf(buf){ return Array.from(new Uint8Array(buf)).map(function(b){return b.toString(16).padStart(2,"0");}).join(""); }
+/* 照片內容指紋：同一張圖（內容相同）就算 id 不同也視為同一張，同步時只留最新版 */
+async function dataUrlFingerprint(dataUrl){
+  if(!dataUrl) return null;
+  try{
+    var h=await crypto.subtle.digest("SHA-256", new TextEncoder().encode(dataUrl));
+    return hexFromBuf(h);
+  }catch(e){ return null; }
+}
 function hexToU8(hex){ var u=new Uint8Array(hex.length/2); for(var i=0;i<u.length;i++) u[i]=parseInt(hex.substr(i*2,2),16); return u; }
 async function pbkdf2Hex(secret,saltHex){
   if(!hasSubtle()) throw new Error("這個瀏覽器不支援加密，請用 https 開啟");
@@ -2666,6 +2702,25 @@ async function renderDataLine(){
       "）、多角度 "+inv.angleGroups.total+"（屬於你 "+inv.angleGroups.mine+"）、模型 "+inv.models.total+"（屬於你 "+
       inv.models.mine+"）"+(inv.orphan>0?("　← 有 "+inv.orphan+" 筆不屬於目前帳號"):"");
   }catch(e){ el.textContent="這台裝置的資料：讀不到（瀏覽器不支援 IndexedDB？）"; }
+}
+async function dedupePhotosByFp(){
+  var byFp={};
+  state.photos.forEach(function(p){ if(!p.fp) return; (byFp[p.fp]=byFp[p.fp]||[]).push(p); });
+  var dupes=[];
+  for(var k in byFp){
+    var list=byFp[k];
+    if(list.length<2) continue;
+    list.sort(function(a,b){
+      var d=(b.updatedAt||b.createdAt||0)-(a.updatedAt||a.createdAt||0);
+      if(d!==0) return d;
+      return (b.createdAt||0)-(a.createdAt||0);
+    });
+    for(var i=1;i<list.length;i++) dupes.push(list[i].id);   /* 保留最新，其餘是重複 */
+  }
+  if(!dupes.length) return 0;
+  for(var j=0;j<dupes.length;j++) await trashItem("photos", dupes[j]);
+  toast("已把 "+dupes.length+" 張重複照片移進垃圾桶（第 7 節可還原）。");
+  return dupes.length;
 }
 async function dataInventory(){
   var inv={}, mineTotal=0, allTotal=0;
@@ -2942,6 +2997,7 @@ async function syncNow(opts){
     if(!opts.flush) for(var b=0;b<blobJobs.length;b++) await uploadBlob(blobJobs[b].kind,blobJobs[b].id,blobJobs[b].dataUrl);
     if(push.length) saveTombs([]);
     renderAll(); renderDataLine();
+    dedupePhotosByFp();
     setSyncStatus("上次同步："+new Date().toLocaleTimeString("zh-TW")+"（上傳 "+push.length+"、圖片 "+blobJobs.length+"）");
   }catch(e){
     var msg=(e&&e.status===401)?"登入已過期，請重新登入":(e.message||String(e));
@@ -2980,6 +3036,56 @@ $("syncNowBtn").addEventListener("click", function(){ syncNow({}); });
 $("rescueBtn").addEventListener("click", function(){ rescueLocalData().catch(function(e){ toast("找回失敗："+(e.message||e)); }); });
 $("recoverPhotosBtn").addEventListener("click", function(){ recoverPhotosFromCloud().catch(function(e){ toast("救回失敗："+(e.message||e)); }); });
 $("clearLocalBtn").addEventListener("click", function(){ clearLocalData().catch(function(e){ toast("清除失敗："+(e.message||e)); }); });
+$("deleteAccountBtn").addEventListener("click", function(){ deleteAccount().catch(function(e){ toast("刪除失敗："+(e.message||e)); }); });
+$("forgotPwBtn").addEventListener("click", function(){ if(!syncEnabled()){ toast("純本機模式沒有雲端密碼，無法重設。"); return; } $("resetEmail").value=$("authEmail").value||""; $("resetErr").textContent=""; $("resetStep1").style.display="block"; $("resetStep2").style.display="none"; $("resetPwModal").classList.add("show"); });
+$("resetCloseBtn").addEventListener("click", function(){ $("resetPwModal").classList.remove("show"); });
+$("resetSendBtn").addEventListener("click", async function(){
+  var email=$("resetEmail").value.trim();
+  if(!email){ $("resetErr").textContent="請填 Email。"; return; }
+  $("resetSendBtn").disabled=true; $("resetSendBtn").textContent="寄送中…";
+  try{
+    await apiFetch("/api/password/reset/request",{method:"POST",json:{email:email}});
+    $("resetStep1").style.display="none"; $("resetStep2").style.display="block"; $("resetErr").textContent="";
+    toast("驗證碼已寄出，請收信。");
+  }catch(e){ $("resetErr").textContent=e.message||String(e); }
+  $("resetSendBtn").disabled=false; $("resetSendBtn").textContent="寄驗證碼";
+});
+$("resetConfirmBtn").addEventListener("click", async function(){
+  var email=$("resetEmail").value.trim(), code=$("resetCode").value.trim();
+  var pw=$("resetNewPw").value, pw2=$("resetNewPw2").value;
+  if(!/^\d{6}$/.test(code)){ $("resetErr").textContent="請填 6 位數驗證碼。"; return; }
+  if(pw.length<4){ $("resetErr").textContent="新密碼至少 4 個字元。"; return; }
+  if(pw!==pw2){ $("resetErr").textContent="兩次密碼不同。"; return; }
+  $("resetConfirmBtn").disabled=true;
+  try{
+    var authSalt=hexFromBuf(crypto.getRandomValues(new Uint8Array(16)));
+    var encSalt=hexFromBuf(crypto.getRandomValues(new Uint8Array(16)));
+    var authHash=await pbkdf2Hex(pw,authSalt);
+    await apiFetch("/api/password/reset/confirm",{method:"POST",json:{email:email,code:code,authHash:authHash,authSalt:authSalt,encSalt:encSalt}});
+    $("resetPwModal").classList.remove("show");
+    $("resetCode").value=""; $("resetNewPw").value=""; $("resetNewPw2").value=""; $("resetStep2").style.display="none"; $("resetStep1").style.display="block";
+    $("authEmail").value=email; $("authPw").value="";
+    toast("密碼已重設，請用新密碼登入；模型金鑰要重新輸入。");
+  }catch(e){ $("resetErr").textContent=e.message||String(e); }
+  $("resetConfirmBtn").disabled=false;
+});
+
+async function deleteAccount(){
+  if(!syncEnabled()||!syncToken){ toast("要先登入雲端帳號才能刪除帳戶。"); return; }
+  var msg="確定要「永久刪除帳戶」嗎？\n\n"+
+    "會刪掉：雲端帳號、雲端上的照片／衣櫃／成品／多角度／模型，全部無法復原。\n"+
+    "這台裝置的本機資料會保留，但以後沒有雲端帳號可同步。\n\n"+
+    "請確認其他裝置沒有還想留的資料。";
+  if(!confirm(msg)) return;
+  $("deleteAccountBtn").disabled=true; $("deleteAccountBtn").textContent="刪除中…";
+  try{
+    await apiFetch("/api/account/delete",{method:"POST"});
+    syncToken=null;
+    toast("帳戶與雲端資料已刪除。");
+    logoutAccount();
+  }catch(e){ toast("刪除失敗："+(e.message||String(e))); }
+  finally{ $("deleteAccountBtn").disabled=false; $("deleteAccountBtn").textContent="刪除帳戶"; }
+}
 
 /* 一鍵清除本機資料：只清「這台裝置」，雲端與其他裝置不動。清完按「立即同步」會重新下載。 */
 async function clearLocalData(){
@@ -3031,7 +3137,7 @@ async function recoverPhotosFromCloud(){
       if(!d){ miss++; continue; }
       var rec;
       if(b.kind==="photos"){
-        rec={ id:b.id, dataUrl:d, label:"救回照片 "+(n+1), createdAt:Date.now(), updatedAt:Date.now() };
+        rec={ id:b.id, dataUrl:d, label:"救回照片 "+(n+1), createdAt:Date.now(), updatedAt:Date.now(), fp:await dataUrlFingerprint(d) };
       } else if(b.kind==="wardrobe"){
         rec={ id:b.id, dataUrl:d, name:"救回衣櫃 "+(n+1), category:"其他", createdAt:Date.now(), updatedAt:Date.now() };
       } else {
@@ -3082,7 +3188,7 @@ async function startCloudSession(pw){
   state.unlocked=true;
   var moved=await adoptLocalIntoCloud();
   await loadUserData();
-  if(sessionKey) await loadKeysFromStorage();
+  if(sessionKey){ var badK2=await loadKeysFromStorage(); if(badK2 && badK2.length) toast("有 "+badK2.length+" 組模型金鑰解不開（可能密碼重設過），請到模型設定重新輸入。"); }
   await syncNow({silent:true});
   $("authOverlay").classList.remove("show");
   document.documentElement.classList.remove("auth-pending");
