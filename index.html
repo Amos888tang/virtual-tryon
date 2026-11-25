@@ -631,19 +631,25 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
       <button class="btn ghost" id="mCancelEditBtn" style="display:none">取消編輯</button>
     </div>
     <p id="mFormMsg" class="kv" style="min-height:1.3em"></p>
+
+    <div id="qualityPanel" style="margin-top:16px;padding-top:14px;border-top:1px solid var(--line)">
+      <h3 style="margin:0 0 4px;font-family:'Noto Serif TC',serif">畫質模型</h3>
+      <p class="kv">選好後按「儲存畫質模型」。高畫質模式關閉時用「一般畫質模型」，打開時用「高畫質模型」；兩邊都沒選就自動找名稱有 4B／9B 的模型。</p>
+      <div class="form-grid">
+        <div><label class="fl" for="qNormal">一般畫質模型（高畫質模式關閉時）</label><select id="qNormal"></select></div>
+        <div><label class="fl" for="qHigh">高畫質模型（高畫質模式打開時）</label><select id="qHigh"></select></div>
+      </div>
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:10px">
+        <button class="btn primary" id="qSaveBtn">儲存畫質模型</button>
+        <span class="kv" id="qMsg"></span>
+      </div>
+      <p class="kv" id="qCurrent" style="margin:8px 0 0"></p>
+    </div>
+
     <hr class="sep" />
     <h3 style="margin:0 0 4px;font-family:'Noto Serif TC',serif">已儲存的模型</h3>
     <div id="modelList"></div>
     <div class="empty" id="modelEmpty">還沒存任何模型。先在上面選廠商、挑模型、貼 API KEY 按儲存——存好第一組之後會請你設定解鎖密碼。</div>
-
-    <hr class="sep" />
-    <h3 style="margin:0 0 6px;font-family:'Noto Serif TC',serif">畫質對應</h3>
-    <p class="kv">「高畫質模式」開關會依這裡自動切換使用中的模型：關閉時用一般畫質、打開時用高畫質。兩組都指定好，開關才有作用；設定只存在這台裝置。</p>
-    <div class="form-grid">
-      <div><label class="fl" for="qNormal">一般畫質模型（開關關閉時）</label><select id="qNormal"></select></div>
-      <div><label class="fl" for="qHigh">高畫質模型（開關打開時）</label><select id="qHigh"></select></div>
-    </div>
-    <p class="kv" id="qualityHint" style="margin:8px 0 0"></p>
 
     <hr class="sep" />
     <h3 style="margin:0 0 6px;font-family:'Noto Serif TC',serif">測試連線</h3>
@@ -1071,17 +1077,28 @@ function saveModels(opts){
 }
 function pwHash(){ return localStorage.getItem(LS_PWHASH)||null; }
 function activeModel(){ return state.models.find(function(m){return m.id===state.activeModelId;})||null; }
-/* 畫質對應：每個帳號各自記「一般畫質」與「高畫質」要用哪一組模型（只存這台裝置） */
+/* 畫質模型：每個帳號在這台裝置記「一般畫質」與「高畫質」各用哪一組已存模型。
+   沒選就自動找名稱有 4B／9B 的模型（Cloudflare 的 4B＝一般、9B＝高畫質）。 */
 function readQualityMap(){ try{ return JSON.parse(localStorage.getItem(LS_QUALITY)||"{}"); }catch(e){ return {}; } }
-function qualityPicks(){
+function qualityChoice(high){
   var map=readQualityMap(), u=map[state.userId||"guest"]||{};
-  return { normal:modelOf(u.normal), high:modelOf(u.high), on:!!u.on };
+  var id=high?u.high:u.normal;
+  return id?modelOf(id):null;
+}
+function defaultQualityModel(high){
+  var want = high ? /9b/i : /4b/i;
+  return state.models.find(function(m){ return want.test(m.modelName||"") && modelCanTryOn(m); })||null;
+}
+function qualityPicks(){
+  var en=qualityChoice(false), eh=qualityChoice(true);
+  return { normal:en||defaultQualityModel(false), high:eh||defaultQualityModel(true), normalExplicit:!!en, highExplicit:!!eh };
 }
 function qualityPick(high){ var p=qualityPicks(); return high?p.high:p.normal; }
-function saveQualityPick(kind, id){
+function saveQualityChoices(normalId, highId){
   var map=readQualityMap(), u=state.userId||"guest";
   map[u]=map[u]||{};
-  if(id) map[u][kind]=id; else delete map[u][kind];
+  if(normalId) map[u].normal=normalId; else delete map[u].normal;
+  if(highId) map[u].high=highId; else delete map[u].high;
   try{ localStorage.setItem(LS_QUALITY, JSON.stringify(map)); }catch(e){}
 }
 function modelOf(id){ return state.models.find(function(m){return m.id===id;})||null; }
@@ -1599,7 +1616,7 @@ function renderModels(){
     list.appendChild(div);
   });
   refreshPwSetup();
-  if(typeof renderQualitySelects==="function") renderQualitySelects();
+  if(typeof renderQualityPanel==="function") renderQualityPanel();
 }
 </script>
 <script>
@@ -3321,14 +3338,14 @@ function renderRecentBase(){
   });
   if(!state.photos.length){ rb.innerHTML="<span class='kv'>還沒有底圖，先到「人物底圖」上傳一張全身照。</span>"; }
 }
-/* 畫質對應的下拉選單：列出目前帳號的所有模型 */
-function renderQualitySelects(){
-  var selN=$("qNormal"), selH=$("qHigh");
-  if(!selN||!selH) return;
+/* 模型頁的畫質模型面板＋穿衣間開關下方的目前對應 */
+function renderQualityPanel(){
   var picks=qualityPicks();
-  function fill(sel, val){
+  var map=readQualityMap(), u=map[state.userId||"guest"]||{};
+  function fill(sel, val, autoText){
+    if(!sel) return;
     sel.innerHTML="";
-    var o=document.createElement("option"); o.value=""; o.textContent="（未指定）"; sel.appendChild(o);
+    var o=document.createElement("option"); o.value=""; o.textContent=autoText; sel.appendChild(o);
     state.models.forEach(function(m){
       var op=document.createElement("option"); op.value=m.id;
       op.textContent=vendorLabel(m)+"・"+m.modelName+(modelCanTryOn(m)?"":"（不能試穿）");
@@ -3336,34 +3353,27 @@ function renderQualitySelects(){
     });
     sel.value=(val && state.models.some(function(m){return m.id===val;}))?val:"";
   }
-  fill(selN, picks.normal&&picks.normal.id);
-  fill(selH, picks.high&&picks.high.id);
-  var txt="一般畫質："+(picks.normal?picks.normal.modelName:"未指定")+"｜高畫質："+(picks.high?picks.high.modelName:"未指定");
-  var h1=$("qualityHint"); if(h1) h1.textContent=txt;
-  var h2=$("qualitySwitchHint"); if(h2) h2.textContent=txt;
+  fill($("qNormal"), u.normal, "未指定（自動找 4B）");
+  fill($("qHigh"), u.high, "未指定（自動找 9B）");
+  var txt="目前：一般畫質 "+(picks.normal?picks.normal.modelName:"找不到 4B")+"｜高畫質 "+(picks.high?picks.high.modelName:"找不到 9B");
+  var cur=$("qCurrent"); if(cur) cur.textContent=txt;
+  var h=$("qualitySwitchHint"); if(h) h.textContent=txt;
 }
 function applyQualityModel(high){
   var pick=qualityPick(high);
   if(pick && !modelCanTryOn(pick)){ toast("指定的"+(high?"高畫質":"一般畫質")+"模型不能試穿，請換一組。"); pick=null; }
-  if(!pick){
-    /* 沒設定就沿用舊規則：找名稱有 9B／4B 的 Cloudflare 模型 */
-    var want = high ? /9b/i : /4b/i;
-    pick = state.models.find(function(m){ return want.test(m.modelName||"") && modelCanTryOn(m); });
-  }
+  if(!pick) pick=defaultQualityModel(high);
   if(!pick) return null;
   state.activeModelId=pick.id; saveModels(); renderModels(); renderTryonSummary();
   toast((high?"高畫質":"一般畫質")+"模式："+pick.modelName);
   return pick;
 }
-if($("qNormal")) $("qNormal").addEventListener("change", function(){
-  saveQualityPick("normal", this.value); renderQualitySelects();
-  if(!$("hiQuality").checked && this.value) applyQualityModel(false);
-  toast(this.value?"已指定一般畫質模型。":"已取消一般畫質模型。");
-});
-if($("qHigh")) $("qHigh").addEventListener("change", function(){
-  saveQualityPick("high", this.value); renderQualitySelects();
-  if($("hiQuality").checked && this.value) applyQualityModel(true);
-  toast(this.value?"已指定高畫質模型。":"已取消高畫質模型。");
+if($("qSaveBtn")) $("qSaveBtn").addEventListener("click", function(){
+  saveQualityChoices($("qNormal").value, $("qHigh").value);
+  renderQualityPanel();
+  var msg=$("qMsg"); if(msg) msg.innerHTML="<span class='ok-text'>已儲存畫質模型設定。</span>";
+  applyQualityModel($("hiQuality").checked);
+  toast("已儲存畫質模型設定。");
 });
 if($("qualityGoBtn")) $("qualityGoBtn").addEventListener("click", function(){
   switchPage("models");
@@ -3373,7 +3383,7 @@ $("hiQuality").addEventListener("change", function(){
   var high=this.checked;
   if(applyQualityModel(high)) return;
   this.checked=!high;
-  toast(high?"還沒有指定高畫質模型，請到「模型」頁的「畫質對應」設定。":"還沒有指定一般畫質模型，請到「模型」頁的「畫質對應」設定。");
+  toast(high?"找不到可用的高畫質模型，請到「模型」頁的「畫質模型」指定。":"找不到可用的一般畫質模型，請到「模型」頁的「畫質模型」指定。");
   switchPage("models");
   try{ $("qNormal").scrollIntoView({behavior:"smooth",block:"center"}); }catch(e){}
 });
