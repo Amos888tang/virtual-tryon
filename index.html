@@ -117,7 +117,7 @@ label.fl{display:block;font-size:.9rem;color:var(--ink2);margin:10px 0 4px}
 .anglegroup.sel{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-soft)}
 .anglegrid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:8px}
 @media(max-width:560px){.anglegrid{grid-template-columns:repeat(2,1fr)}}
-@media(max-width:560px){.grid.cards{grid-template-columns:repeat(2,1fr);gap:10px}.grid.results{grid-template-columns:repeat(2,1fr);gap:10px}}
+@media(max-width:560px){.grid.cards{grid-template-columns:repeat(2,1fr);gap:10px}.grid.results{grid-template-columns:repeat(2,1fr);gap:10px}#trashGrid{grid-template-columns:repeat(3,1fr);gap:10px}}
 .anglecell{background:var(--surface2);border-radius:9px;overflow:hidden;cursor:pointer;border:2px solid transparent;padding:8px 14px}
 .anglecell img{width:100%;aspect-ratio:3/4;object-fit:contain;display:block}
 .anglecell .cap{text-align:center;font-size:.82rem;color:var(--ink2);padding:4px 2px}
@@ -380,7 +380,10 @@ hr.sep{border:none;border-top:1px solid var(--line);margin:16px 0}
   <!-- 4. 多角度 -->
   <section class="block" id="secAngles">
     <div class="sec-head"><h2>4．全身多角度底圖</h2><span class="hint">勾選要當基準的人物照片（可多選，最多 4 張），一次合成 3 組、每組四個角度（正面／左側／右側／後面），全部是全身照、素色背景。點任一組裡的任一張，就選定整組當試穿底圖；有 2 組以上時可以自組一組。中途有幾張失敗的話，按「重試失敗的角度」只補缺的那幾張，不會整組重跑。</span></div>
-    <p class="kv" id="angleRefHint" style="margin:2px 0 6px">勾選要當基準的底圖（點一下勾選／取消，最多 4 張）：</p>
+    <p class="kv" id="angleRefHint" style="margin:2px 0 6px">按「載入底圖」帶入人物照片，再勾選 1~4 張當基準：</p>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin:0 0 8px">
+      <button class="btn small" id="angleLoadBtn">載入底圖</button>
+    </div>
     <div class="grid photos" id="angleRefGrid"></div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
       <button class="btn primary" id="angleBtn">生成 3 組多角度底圖</button>
@@ -482,7 +485,7 @@ hr.sep{border:none;border-top:1px solid var(--line);margin:16px 0}
 
   <!-- 7. 垃圾桶 -->
   <section class="block" id="secTrash">
-    <div class="sec-head"><h2>7．垃圾桶</h2><span class="hint">刪掉的東西先來這裡，30 天內可以還原；「永久刪除」才會從所有裝置與雲端一起刪掉。超過 30 天會自動清空。</span></div>
+    <div class="sec-head"><h2>7．垃圾桶</h2><span class="hint">刪掉的東西先來這裡，30 天內可以還原；「永久刪除」才會從所有裝置與雲端一起刪掉。超過 30 天會自動清空。</span><button class="btn small danger" id="trashClearAllBtn" style="margin-left:auto">全部清空</button></div>
     <div class="grid cards" id="trashGrid"></div>
     <div class="empty" id="trashEmpty">垃圾桶是空的。刪掉的東西會先放這裡，可以還原。</div>
   </section>
@@ -1529,14 +1532,13 @@ function renderWardrobe(){
     var card=document.createElement("div"); card.className="card wcard"+(on?" wardrobe-sel":"");
     var noteUrl=(w.note||"").match(/https?:\/\/\S+/);
     card.innerHTML="<div class='ph'><img alt='"+esc(w.name)+"的照片'/><span class='pickbadge'>✓ 已選</span></div><div class='bd'>"+
-      "<button class='btn small copybtn' data-a='copy'>複製這件</button>"+
       (w.brand?"<div class='brand'>"+esc(w.brand)+"</div>":"")+
       "<div class='nm'>"+esc(w.name)+"</div>"+
       "<div class='meta'>"+esc(w.category)+"</div>"+
       (w.price?"<div class='meta'>價格："+esc(w.price)+"</div>":"")+
       (w.note?"<div class='meta'>"+esc(w.note.replace(/https?:\/\/\S+/g,"").trim()||"")+"</div>":"")+
       (w.url?"<div class='meta'><a href='"+esc(w.url)+"' target='_blank' rel='noopener'>商品連結 ↗</a></div>":(!w.url&&noteUrl?"<div class='meta'><a href='"+esc(noteUrl[0])+"' target='_blank' rel='noopener'>商品連結 ↗</a></div>":""))+
-      "<div class='row'><button class='linklike' data-a='edit'>編輯</button><button class='linklike' data-a='view'>放大</button><button class='linklike' data-a='del' style='color:var(--err)'>刪除這件</button></div></div>";
+      "<div class='row'><button class='linklike' data-a='copy'>複製</button><button class='linklike' data-a='edit'>編輯</button><button class='linklike' data-a='del' style='color:var(--err)'>刪除</button><button class='linklike' data-a='view'>放大</button></div></div>";
     card.querySelector("img").src=w.dataUrl;
     var ph=card.querySelector(".ph");
     ph.title=on?"點一下取消選取":"點一下選來試穿";
@@ -2057,17 +2059,17 @@ function renderResults(){
   $("resultEmpty").style.display=state.results.length?"none":"block";
   state.results.forEach(function(r){
     var card=document.createElement("div"); card.className="card";
-    card.innerHTML="<div class='ph'><img alt='試穿成品'/></div><div class='bd'><div class='meta'>"+esc(r.when)+"<br/>"+esc(r.items)+"</div>"+
-      "<div class='row'><a class='linklike' data-a='dl' href='#'>存檔</a>"+(canShareFiles()?"<button class='linklike' data-a='share'>存到相簿</button>":"")+"<button class='linklike' data-a='del' style='color:var(--err)'>刪除</button><button class='linklike' data-a='model'>模型</button></div>"+
+    card.innerHTML="<div class='ph'><img alt='試穿成品'/></div><div class='bd'><div class='meta' style='font-size:.78rem'>"+esc(r.when)+"　"+esc(r.items)+"</div>"+
+      "<div class='row'><button class='linklike' data-a='save'>儲存</button><button class='linklike' data-a='del' style='color:var(--err)'>刪除</button><button class='linklike' data-a='model'>模型</button></div>"+
       "<div class='modelinfo'></div></div>";
     var thumb=card.querySelector("img"); thumb.src=r.dataUrl;
     thumb.title="點一下看大圖（可縮放，也能直接下載）";
     thumb.addEventListener("click", function(){ openViewer(r.dataUrl, "tryon-"+r.id+".jpg"); });
-    var dl=card.querySelector("[data-a=dl]");
-    dl.href=r.dataUrl; dl.setAttribute("download","tryon-"+r.id+".jpg");
-    dl.addEventListener("click", function(ev){ ev.preventDefault(); saveImageTo(r.dataUrl,"tryon-"+r.id+".jpg"); });
-    var sh=card.querySelector("[data-a=share]");
-    if(sh) sh.addEventListener("click", function(){ shareImageTo(r.dataUrl,"tryon-"+r.id+".jpg"); });
+    var sv=card.querySelector("[data-a=save]");
+    sv.addEventListener("click", function(){
+      if(canShareFiles()) shareImageTo(r.dataUrl,"tryon-"+r.id+".jpg");
+      else saveImageTo(r.dataUrl,"tryon-"+r.id+".jpg");
+    });
     var mi=card.querySelector(".modelinfo");
     mi.textContent=r.vendor
       ? ("廠商："+r.vendor+"\n模型："+r.modelName+(r.modelId&&r.modelId!==r.modelName?"（"+r.modelId+"）":"")+(r.extra?"\n補充提示詞："+r.extra:""))
@@ -2234,6 +2236,16 @@ function missingCount(g){
   var n=0; for(var i=0;i<4;i++){ if(!(g&&g.images&&g.images[i])) n++; } return n;
 }
 var angleRefIds=[];   /* 勾選當基準的底圖 id（最多 4 張） */
+$("angleLoadBtn").addEventListener("click", function(){ renderAngleRefs(); });
+$("trashClearAllBtn").addEventListener("click", async function(){
+  if(!state.trash.length){ toast("垃圾桶已經是空的。"); return; }
+  if(!confirm("確定要「全部清空」垃圾桶嗎？這會把垃圾桶裡所有項目永久刪除、且從所有裝置與雲端一起刪掉，無法還原。")) return;
+  var n=state.trash.length;
+  for(var i=state.trash.length-1;i>=0;i--){ await hardDelete(state.trash[i].kind, state.trash[i].rec.id); }
+  state.trash=[];
+  renderTrash();
+  toast("已清空垃圾桶（"+n+" 項）。");
+});
 function renderAngleRefs(){
   var g=$("angleRefGrid"); if(!g) return;
   g.innerHTML="";
@@ -2957,7 +2969,7 @@ function renderTrash(){
 
 function renderAll(){
   renderPhotos(); renderWardrobe(); renderResults(); renderAngleGroups(); renderModels();
-  renderTryonSummary(); refreshPwSetup(); renderTrash(); renderAngleRefs();
+  renderTryonSummary(); refreshPwSetup(); renderTrash();
 }
 function stateArrayOf(kind){
   if(kind==="photos") return state.photos;
