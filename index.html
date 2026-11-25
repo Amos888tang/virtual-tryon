@@ -30,7 +30,7 @@ button,[role="button"],select,summary,input:not([type="checkbox"],[type="radio"]
 button{cursor:pointer}
 h1,h2{font-family:"Noto Serif TC",serif;margin:0}
 h2{font-size:1.35rem}
-.wrap{max-width:1060px;margin:0 auto;padding:0 16px 64px}
+.wrap{max-width:none;margin:0;padding:0 clamp(16px,3vw,44px) 64px}
 .top{padding:26px 0 6px}
 .top h1{font-size:1.9rem}
 .lede{color:var(--ink2);max-width:46em;margin:8px 0 0}
@@ -53,9 +53,9 @@ input[type=text],input[type=password],input[type=url],select,textarea{width:100%
 textarea{resize:vertical}
 label.fl{display:block;font-size:.9rem;color:var(--ink2);margin:10px 0 4px}
 .grid{display:grid;gap:14px}
-.grid.photos{grid-template-columns:repeat(auto-fill,minmax(104px,1fr))}
-.grid.cards{grid-template-columns:repeat(auto-fill,minmax(200px,1fr))}
-.grid.results{grid-template-columns:repeat(auto-fill,minmax(170px,1fr))}
+.grid.photos{grid-template-columns:repeat(auto-fill,minmax(120px,1fr))}
+.grid.cards{grid-template-columns:repeat(auto-fill,minmax(220px,1fr))}
+.grid.results{grid-template-columns:repeat(auto-fill,minmax(200px,1fr))}
 .card{border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--surface)}
 .card .ph{background:var(--surface2);aspect-ratio:3/4;display:flex;align-items:center;justify-content:center;overflow:hidden;padding:10px 16px}
 .card .ph img{width:100%;height:100%;object-fit:contain;display:block}
@@ -171,7 +171,7 @@ body{padding-bottom:70px}
 /* 頂部導覽（電腦） */
 .topnav{display:none;position:sticky;top:0;z-index:40;background:rgba(250,246,240,.92);
   -webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px);
-  border-bottom:1px solid var(--line);padding:0 16px;gap:2px;flex-wrap:wrap}
+  border-bottom:1px solid var(--line);padding:0 clamp(16px,3vw,44px);gap:2px;flex-wrap:wrap}
 .topnav .tnav{border:none;background:none;color:var(--ink2);font-size:1rem;font-weight:600;
   padding:14px 14px;border-bottom:2.5px solid transparent;cursor:pointer;font-family:inherit}
 .topnav .tnav.on{color:var(--accent);border-bottom-color:var(--accent)}
@@ -232,7 +232,7 @@ body{padding-bottom:70px}
 .block{background:var(--surface);border:1px solid var(--line);border-radius:16px;box-shadow:none;padding:16px;margin:12px 0}
 .sec-head{margin-bottom:8px}
 .sec-head h2{font-size:1.02rem;font-weight:700;letter-spacing:0}
-.sec-head .hint{font-size:.82rem;line-height:1.5}
+.sec-head .hint{font-size:.82rem;line-height:1.5;max-width:96ch}
 .btn{border-radius:11px}
 .btn.small{border-radius:9px;min-height:1.9rem}
 input[type=text],input[type=password],input[type=url],input[type=email],select,textarea{border-radius:10px}
@@ -257,8 +257,25 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 #page-models hr.sep{border-top:1px solid var(--line);margin:14px -16px}
 /* 模型頁／設定頁的群組標題 */
 #page-models h3,#page-settings h3{font-size:1.02rem;font-weight:700;margin:2px 0 8px}
+/* 穿衣間：寬螢幕左右兩欄（左選圖、右確認與生成），手機維持單欄 */
+.tryon-cols{display:block}
+@media(min-width:1024px){
+  #secTryon .tryon-cols{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:0 36px;align-items:start}
+}
 /* 人物底圖：主圖限高，手機不用一直滑 */
-#page-base .main-photo{max-height:44vh}
+#page-base .main-photo{max-width:560px;max-height:44vh;margin:10px auto}
+/* 人物底圖：寬螢幕左邊主圖、右邊照片庫 */
+.base-cols{display:block}
+@media(min-width:1024px){
+  #secPhotos .base-cols{display:grid;grid-template-columns:minmax(320px,420px) minmax(0,1fr);gap:8px 28px;align-items:start}
+  #secPhotos .base-lib .grid.photos{grid-template-columns:repeat(auto-fill,minmax(130px,1fr))}
+}
+/* 寬螢幕：表單與說明不要拉成一大長行 */
+@media(min-width:1200px){
+  #secModels .form-grid,#secModels #modelList,#secModels #modelEmpty,#secModels #diagOut{max-width:1120px}
+  #secBackup > p,#secTrash .empty{max-width:110ch}
+  .notice p{max-width:110ch}
+}
 /* 版本資訊 */
 .verline{text-align:center;color:var(--ink2);font-size:.8rem;margin:18px 0 8px}
 </style>
@@ -424,7 +441,8 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
   <!-- 1. 人物照片 -->
   <section class="block" id="secPhotos">
     <div class="sec-head"><h2>照片庫</h2><span class="hint">點任一張設為目前底圖；也可以生成下面的多角度底圖來用。</span></div>
-    <div class="main-photo" id="mainPhotoBox"><span class="kv">還沒有選照片，先從下面上傳一張全身照。</span></div>
+    <div class="base-cols"><div class="base-main">
+    <div class="main-photo" id="mainPhotoBox"><span class="kv">還沒有選照片，先上傳一張全身照。</span></div>
     <div class="row" style="display:flex;gap:8px;flex-wrap:wrap">
       <label class="btn primary" for="photoUpload">上傳全身照</label>
       <input type="file" id="photoUpload" accept="image/*" multiple hidden />
@@ -432,8 +450,10 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
       <input type="file" id="photoReplaceFile" accept="image/*" hidden />
       <button class="btn danger" id="photoDeleteBtn">刪除目前這張</button>
     </div>
-    <p class="kv" style="margin-top:10px">照片庫 <span id="photoCount">0</span> 張（可多選上傳，每張可逐張刪除）</p>
+    </div><div class="base-lib">
+    <p class="kv" style="margin:0 0 8px">照片庫 <span id="photoCount">0</span> 張（可多選上傳，每張可逐張刪除；右上角可標記 4 視角）</p>
     <div class="grid photos" id="photoGrid"></div>
+    </div></div>
   </section>
 
   <!-- 2. 衣櫃 -->
@@ -480,12 +500,17 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
     <div class="sec-head"><h2>穿衣間</h2></div>
     <p class="kv" id="tryonSummary">尚未選底圖與衣服。</p>
     <p class="kv">使用中的模型：<strong id="tryonModelName">（尚未設定）</strong> <span id="tryonModelPrice"></span> <button class="linklike" id="tryonModelLink" type="button">切換</button></p>
+    <div class="tryon-cols"><div class="tryon-col">
     <div class="step"><span class="step-num">1</span><h3 class="step-title">選底圖</h3></div>
     <div class="recent" id="recentBase"></div>
     <p class="kv" style="margin:0 0 6px"><button class="linklike" id="baseMoreBtn" type="button">到人物底圖頁挑選／上傳 →</button></p>
 
-    <h3 style="margin:16px 0 4px;font-family:'Noto Serif TC',serif">這次要用的照片</h3>
-    <p class="kv" id="tryonPreviewEmpty">還沒選底圖與衣服：先到「1．人物照片」選一張，再到「2．衣櫃」點照片選要試穿的 1–3 件。</p>
+    <div class="step" style="margin-top:16px"><span class="step-num">2</span><h3 class="step-title">選衣服</h3></div>
+    <div class="recent" id="recentWardrobe"></div>
+    </div><div class="tryon-col">
+
+    <h3 style="margin:0 0 4px;font-family:'Noto Serif TC',serif">這次要用的照片</h3>
+    <p class="kv" id="tryonPreviewEmpty">還沒選底圖與衣服：先在左邊選一張底圖，再挑 1–3 件衣服。</p>
     <div class="tryon-preview" id="tryonPreview"></div>
 
     <div id="tryonRefBox" style="display:none">
@@ -498,10 +523,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
       </div>
     </div>
     <p class="kv" style="margin:6px 0 0"><button class="linklike" id="refOpenBtn">手動指定補圖參考照</button></p>
-    <div class="step" style="margin-top:14px"><span class="step-num">2</span><h3 class="step-title">選衣服</h3></div>
-    <div class="recent" id="recentWardrobe"></div>
-
-    <div class="step" style="margin-top:14px"><span class="step-num">3</span><h3 class="step-title">生成</h3></div>
+    <div class="step" style="margin-top:16px"><span class="step-num">3</span><h3 class="step-title">生成</h3></div>
     <div class="quality-row"><label class="switch"><input type="checkbox" id="hiQuality"><span class="track"><span class="knob"></span></span><span class="qlabel">高畫質模式（較慢、較貴）</span></label></div>
     <label class="fl" for="tryonExtra">補充提示詞（可留空，留空就用預設的試穿指令）</label>
     <textarea id="tryonExtra" rows="3" placeholder="例：外套不要扣起來、褲管要蓋住鞋面、光線自然一點、保留原本背景"></textarea>
@@ -514,6 +536,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
     </div>
     <div class="progress" id="tryonProgWrap" style="display:none"><div id="tryonProg"></div></div>
     <p class="statusline" id="tryonStatus"></p>
+    </div></div>
     <div id="historyBlock">
       <hr class="sep" />
       <h3 style="margin:0 0 8px;font-family:'Noto Serif TC',serif">試穿紀錄</h3>
