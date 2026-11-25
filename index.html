@@ -609,8 +609,16 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 
     <div class="form-grid">
       <div><label class="fl" for="mVendor">廠商</label><select id="mVendor"></select></div>
-      <div><label class="fl" for="mModel">模型</label><select id="mModel"></select>
-        <input type="text" id="mModelText" placeholder="輸入模型名稱" style="display:none;margin-top:6px" /></div>
+      <div>
+        <label class="fl" for="mModel">模型（一般畫質）</label>
+        <select id="mModel"></select>
+        <input type="text" id="mModelText" placeholder="輸入模型名稱" style="display:none;margin-top:6px" />
+        <div id="mHighWrap" style="margin-top:10px">
+          <label class="fl" for="mModelH" style="margin-top:0">模型（高畫質）</label>
+          <select id="mModelH"></select>
+          <p class="kv" style="margin:4px 0 0">留空就自動找名稱有 9B 的模型；選了會用同一組金鑰一起存成高畫質模型。</p>
+        </div>
+      </div>
       <div class="full" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
         <button class="btn small" id="mRefreshBtn">重新整理模型清單</button>
         <span class="kv" id="mListNote"></span>
@@ -631,20 +639,6 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
       <button class="btn ghost" id="mCancelEditBtn" style="display:none">取消編輯</button>
     </div>
     <p id="mFormMsg" class="kv" style="min-height:1.3em"></p>
-
-    <div id="qualityPanel" style="margin-top:16px;padding-top:14px;border-top:1px solid var(--line)">
-      <h3 style="margin:0 0 4px;font-family:'Noto Serif TC',serif">畫質模型</h3>
-      <p class="kv">選好後按「儲存畫質模型」。高畫質模式關閉時用「一般畫質模型」，打開時用「高畫質模型」；兩邊都沒選就自動找名稱有 4B／9B 的模型。</p>
-      <div class="form-grid">
-        <div><label class="fl" for="qNormal">一般畫質模型（高畫質模式關閉時）</label><select id="qNormal"></select></div>
-        <div><label class="fl" for="qHigh">高畫質模型（高畫質模式打開時）</label><select id="qHigh"></select></div>
-      </div>
-      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:10px">
-        <button class="btn primary" id="qSaveBtn">儲存畫質模型</button>
-        <span class="kv" id="qMsg"></span>
-      </div>
-      <p class="kv" id="qCurrent" style="margin:8px 0 0"></p>
-    </div>
 
     <hr class="sep" />
     <h3 style="margin:0 0 4px;font-family:'Noto Serif TC',serif">已儲存的模型</h3>
@@ -1097,8 +1091,8 @@ function qualityPick(high){ var p=qualityPicks(); return high?p.high:p.normal; }
 function saveQualityChoices(normalId, highId){
   var map=readQualityMap(), u=state.userId||"guest";
   map[u]=map[u]||{};
-  if(normalId) map[u].normal=normalId; else delete map[u].normal;
-  if(highId) map[u].high=highId; else delete map[u].high;
+  if(normalId) map[u].normal=normalId; else if(normalId===null) delete map[u].normal;
+  if(highId!==undefined){ if(highId) map[u].high=highId; else delete map[u].high; }
   try{ localStorage.setItem(LS_QUALITY, JSON.stringify(map)); }catch(e){}
 }
 function modelOf(id){ return state.models.find(function(m){return m.id===id;})||null; }
@@ -1411,6 +1405,7 @@ function fillModelSelect(){
   $("mWorkerWrap").style.display=(v==="cloudflare")?"block":"none";
   if(v==="custom"){
     sel.style.display="none"; $("mModelText").style.display="block";
+    if($("mHighWrap")) $("mHighWrap").style.display="none";
     $("mModelInfo").textContent="自訂廠商：自己填模型名稱與接口地址。生成時會用 OpenAI 相容的 /images/edits 方式呼叫（multipart，Authorization: Bearer）。";
     $("mListNote").textContent="自訂廠商沒有清單可查。";
     $("mRefreshBtn").disabled=true;
@@ -1418,6 +1413,7 @@ function fillModelSelect(){
   }
   $("mRefreshBtn").disabled=false;
   sel.style.display="block";
+  if($("mHighWrap")) $("mHighWrap").style.display="block";
   var keep=sel.value;
   sel.innerHTML="";
   var builtin=(p.models||[]).slice();
@@ -1437,6 +1433,15 @@ function fillModelSelect(){
     sel.appendChild(g2);
   }
   if(keep && modelMetaList(v).some(function(m){ return m.id===keep; })) sel.value=keep;
+  /* 高畫質下拉跟一般畫質用同一份模型清單，第一項是「自動找 9B」 */
+  var hsel=$("mModelH");
+  if(hsel){
+    var keepH=hsel.value;
+    hsel.innerHTML="";
+    var auto=document.createElement("option"); auto.value=""; auto.textContent="未指定（自動找 9B）"; hsel.appendChild(auto);
+    Array.prototype.forEach.call(sel.childNodes, function(n){ hsel.appendChild(n.cloneNode(true)); });
+    if(keepH && Array.prototype.some.call(hsel.options, function(o){ return o.value===keepH; })) hsel.value=keepH;
+  }
   var needText=(v==="replicate" && sel.value==="__custom__");
   $("mModelText").style.display=needText?"block":"none";
   if(needText) $("mModelText").placeholder="例：black-forest-labs/flux-kontext-pro 或 cuuupid/idm-vton:abc123…";
@@ -1491,6 +1496,11 @@ function startEditModel(id){
     }
     sel.value=m.modelId;
     onModelChange();
+  }
+  $("mModelH").value="";
+  var highPick=qualityChoice(true);
+  if(highPick && highPick.vendor===m.vendor && Array.prototype.some.call($("mModelH").options, function(o){ return o.value===highPick.modelId; })){
+    $("mModelH").value=highPick.modelId;
   }
   $("mEndpoint").value=m.endpoint||"";
   $("mAccount").value=m.accountId||"";
@@ -1552,6 +1562,24 @@ $("mSaveBtn").addEventListener("click", async function(){
   var finalKey=key||(editing?editing.apiKey:"");
   var rec={ id:(editing?editing.id:uid()), vendor:v, customVendor:(v==="custom"?$("mCustomVendor").value.trim():""), modelId:modelId, modelName:modelName, endpoint:normUrl(endpoint), accountId:acct, workerUrl:normUrl(worker), apiKey:finalKey, createdAt:(editing?editing.createdAt:Date.now()) };
   if(sessionKey){ rec.keyEnc=await encryptSecret(finalKey); }
+  /* 表單裡的「模型（高畫質）」：選了就用同一組金鑰存成（或沿用）另一組模型 */
+  var highRec=null;
+  if(v!=="custom" && $("mModelH") && $("mModelH").value && $("mModelH").value!=="__custom__"){
+    var hMeta=modelMetaList(v).find(function(x){ return x.id===$("mModelH").value; });
+    if(hMeta){
+      if(hMeta.id===modelId){ highRec=rec; }
+      else{
+        highRec=state.models.find(function(x){ return x.vendor===v && x.modelId===hMeta.id; })||null;
+        if(!highRec){
+          var hEp=hMeta.endpoint||"";
+          if(hEp.indexOf("{MODEL}")>=0) hEp=hEp.replace("{MODEL}",hMeta.id);
+          if(hEp.indexOf("{ACCOUNT_ID}")>=0 && acct) hEp=hEp.replace("{ACCOUNT_ID}",acct);
+          highRec={ id:uid(), vendor:v, customVendor:"", modelId:hMeta.id, modelName:hMeta.name, endpoint:normUrl(hEp), accountId:acct, workerUrl:normUrl(worker), apiKey:finalKey, createdAt:Date.now() };
+          if(rec.keyEnc) highRec.keyEnc=rec.keyEnc;
+        }
+      }
+    }
+  }
   var wasEditing=!!editing;
   if(editing){
     var idx=state.models.findIndex(function(x){ return x.id===editing.id; });
@@ -1560,10 +1588,13 @@ $("mSaveBtn").addEventListener("click", async function(){
     state.models.push(rec);
     if(!state.activeModelId) state.activeModelId=rec.id;
   }
+  if(highRec && highRec!==rec && !state.models.some(function(x){ return x.id===highRec.id; })) state.models.push(highRec);
+  saveQualityChoices(rec.id, highRec?highRec.id:undefined);
   saveModels();
   endEditModel();
   $("mKey").value=""; $("mWorker").value="";
   $("mFormMsg").innerHTML="<span class='ok-text'>"+(wasEditing?"已更新：":"已儲存：")+esc(vendorLabel(rec))+"・"+esc(modelName)+"（金鑰 "+esc(maskKey(finalKey))+"）</span>"+
+    (highRec?"<span class='kv'>　高畫質："+esc(highRec.modelName)+"</span>":"")+
     (v==="cloudflare"&&!worker?"<span class='warn-text'>　注意：沒填 Worker 代理位址，從瀏覽器直呼 Cloudflare 會被跨域擋掉。</span>":"");
   if(!pwHash()) state.unlocked=true;
   renderModels(); renderTryonSummary(); refreshPwSetup(); refreshLock();
@@ -1616,7 +1647,7 @@ function renderModels(){
     list.appendChild(div);
   });
   refreshPwSetup();
-  if(typeof renderQualityPanel==="function") renderQualityPanel();
+  if(typeof renderQualityHint==="function") renderQualityHint();
 }
 </script>
 <script>
@@ -3338,25 +3369,10 @@ function renderRecentBase(){
   });
   if(!state.photos.length){ rb.innerHTML="<span class='kv'>還沒有底圖，先到「人物底圖」上傳一張全身照。</span>"; }
 }
-/* 模型頁的畫質模型面板＋穿衣間開關下方的目前對應 */
-function renderQualityPanel(){
+/* 穿衣間開關下方的目前對應 */
+function renderQualityHint(){
   var picks=qualityPicks();
-  var map=readQualityMap(), u=map[state.userId||"guest"]||{};
-  function fill(sel, val, autoText){
-    if(!sel) return;
-    sel.innerHTML="";
-    var o=document.createElement("option"); o.value=""; o.textContent=autoText; sel.appendChild(o);
-    state.models.forEach(function(m){
-      var op=document.createElement("option"); op.value=m.id;
-      op.textContent=vendorLabel(m)+"・"+m.modelName+(modelCanTryOn(m)?"":"（不能試穿）");
-      sel.appendChild(op);
-    });
-    sel.value=(val && state.models.some(function(m){return m.id===val;}))?val:"";
-  }
-  fill($("qNormal"), u.normal, "未指定（自動找 4B）");
-  fill($("qHigh"), u.high, "未指定（自動找 9B）");
   var txt="目前：一般畫質 "+(picks.normal?picks.normal.modelName:"找不到 4B")+"｜高畫質 "+(picks.high?picks.high.modelName:"找不到 9B");
-  var cur=$("qCurrent"); if(cur) cur.textContent=txt;
   var h=$("qualitySwitchHint"); if(h) h.textContent=txt;
 }
 function applyQualityModel(high){
@@ -3368,24 +3384,17 @@ function applyQualityModel(high){
   toast((high?"高畫質":"一般畫質")+"模式："+pick.modelName);
   return pick;
 }
-if($("qSaveBtn")) $("qSaveBtn").addEventListener("click", function(){
-  saveQualityChoices($("qNormal").value, $("qHigh").value);
-  renderQualityPanel();
-  var msg=$("qMsg"); if(msg) msg.innerHTML="<span class='ok-text'>已儲存畫質模型設定。</span>";
-  applyQualityModel($("hiQuality").checked);
-  toast("已儲存畫質模型設定。");
-});
 if($("qualityGoBtn")) $("qualityGoBtn").addEventListener("click", function(){
   switchPage("models");
-  try{ $("qNormal").scrollIntoView({behavior:"smooth",block:"center"}); }catch(e){}
+  try{ $("mModelH").scrollIntoView({behavior:"smooth",block:"center"}); }catch(e){}
 });
 $("hiQuality").addEventListener("change", function(){
   var high=this.checked;
   if(applyQualityModel(high)) return;
   this.checked=!high;
-  toast(high?"找不到可用的高畫質模型，請到「模型」頁的「畫質模型」指定。":"找不到可用的一般畫質模型，請到「模型」頁的「畫質模型」指定。");
+  toast(high?"找不到可用的高畫質模型，請到「模型」頁編輯模型，在「模型（高畫質）」選一組。":"找不到可用的一般畫質模型，請到「模型」頁存一組能試穿的模型。");
   switchPage("models");
-  try{ $("qNormal").scrollIntoView({behavior:"smooth",block:"center"}); }catch(e){}
+  try{ $("mModelH").scrollIntoView({behavior:"smooth",block:"center"}); }catch(e){}
 });
 
 function renderAll(){
