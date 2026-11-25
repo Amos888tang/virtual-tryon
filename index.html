@@ -159,6 +159,108 @@ html.lock-pending body{overflow:hidden}
 #toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 18px;border-radius:999px;font-size:.92rem;z-index:90;display:none;max-width:92vw;text-align:center}
 .kv{font-size:.9rem;color:var(--ink2)}
 hr.sep{border:none;border-top:1px solid var(--line);margin:16px 0}
+
+/* ============ V2 iOS 分頁樣式 ============ */
+h1,h2,h3{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","PingFang TC","Noto Sans TC",sans-serif !important;letter-spacing:-.01em}
+body{padding-bottom:70px}
+
+/* 分頁 */
+.page{display:none}
+.page.on{display:block}
+
+/* 頂部導覽（電腦） */
+.topnav{display:none;position:sticky;top:0;z-index:40;background:rgba(250,246,240,.92);
+  -webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px);
+  border-bottom:1px solid var(--line);padding:0 16px;gap:2px;flex-wrap:wrap}
+.topnav .tnav{border:none;background:none;color:var(--ink2);font-size:1rem;font-weight:600;
+  padding:14px 14px;border-bottom:2.5px solid transparent;cursor:pointer;font-family:inherit}
+.topnav .tnav.on{color:var(--accent);border-bottom-color:var(--accent)}
+
+/* 底部 Tab（手機） */
+.tabbar{display:flex;position:fixed;left:0;right:0;bottom:0;z-index:45;
+  background:rgba(255,255,255,.84);-webkit-backdrop-filter:saturate(180%) blur(20px);backdrop-filter:saturate(180%) blur(20px);
+  border-top:1px solid rgba(60,40,20,.12);padding:6px 4px calc(6px + env(safe-area-inset-bottom))}
+.tabbar .tab{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;
+  background:none;border:none;color:var(--ink2);font-size:10.5px;font-weight:500;cursor:pointer;font-family:inherit}
+.tabbar .tab svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.tabbar .tab.on{color:var(--accent)}
+
+/* 電腦版：顯示頂部導覽、隱藏底部 Tab */
+@media(min-width:720px){
+  .topnav{display:flex}
+  .tabbar{display:none}
+  body{padding-bottom:0}
+}
+@media (prefers-color-scheme: dark){
+  .topnav{background:rgba(29,24,21,.9)}
+  .tabbar{background:rgba(40,33,29,.84)}
+}
+
+/* ============ V2 穿衣間三步 / 最近快捷 / 開關 ============ */
+.step{display:flex;align-items:center;gap:10px;margin:2px 0 8px}
+.step-num{width:26px;height:26px;border-radius:50%;background:var(--accent);color:var(--accent-ink);
+  display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;flex:0 0 26px}
+.step-title{font-size:17px;font-weight:700;margin:0}
+
+.recent{display:flex;gap:10px;overflow-x:auto;padding:2px 2px 10px;-webkit-overflow-scrolling:touch}
+.rchip{flex:0 0 auto;display:flex;flex-direction:column;align-items:center;gap:4px;background:var(--card);
+  border:1px solid var(--line);border-radius:12px;padding:8px;width:80px;cursor:pointer;font-family:inherit}
+.rchip img{width:56px;height:72px;object-fit:cover;border-radius:8px;background:var(--surface2)}
+.rchip span{font-size:11px;color:var(--ink);max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rchip.on{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-soft)}
+
+.quality-row{display:flex;align-items:center;margin:4px 0 12px}
+.switch{display:flex;align-items:center;gap:10px;cursor:pointer}
+.switch input{display:none}
+.track{width:48px;height:28px;border-radius:999px;background:#E3E3E5;position:relative;transition:background .2s;flex:0 0 auto}
+.knob{position:absolute;top:2px;left:2px;width:24px;height:24px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.25);transition:left .2s}
+.switch input:checked + .track{background:var(--accent)}
+.switch input:checked + .track .knob{left:22px}
+.qlabel{font-size:15px;color:var(--ink)}
+@media (prefers-color-scheme: dark){
+  .track{background:#4a3f36}
+  .knob{background:#f0e7dd}
+}
+
+/* ============ V2 頁首／iOS 群組卡片（2026-11-25） ============ */
+.top{display:none}
+.page-head{padding:20px 2px 2px}
+.page-head h1{font-size:1.95rem;font-weight:800;letter-spacing:-.025em;margin:0;line-height:1.2}
+.page-head .psub{margin:5px 0 0;color:var(--ink2);font-size:.92rem;line-height:1.5}
+.page-head .pact{margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.page-head + .block,.page-head + .seg + .block{margin-top:12px}
+.block{background:var(--surface);border:1px solid var(--line);border-radius:16px;box-shadow:none;padding:16px;margin:12px 0}
+.sec-head{margin-bottom:8px}
+.sec-head h2{font-size:1.02rem;font-weight:700;letter-spacing:0}
+.sec-head .hint{font-size:.82rem;line-height:1.5}
+.btn{border-radius:11px}
+.btn.small{border-radius:9px;min-height:1.9rem}
+input[type=text],input[type=password],input[type=url],input[type=email],select,textarea{border-radius:10px}
+button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+/* iOS 分段控制項 */
+.seg{display:flex;background:var(--surface2);border-radius:11px;padding:3px;gap:3px;margin:12px 0 4px}
+.seg button{flex:1;border:none;background:transparent;color:var(--ink2);font:inherit;font-size:.95rem;font-weight:600;padding:8px 10px;border-radius:9px;cursor:pointer;min-height:2.25rem}
+.seg button.on{background:var(--surface);color:var(--ink);box-shadow:0 1px 4px rgba(0,0,0,.12)}
+@media (prefers-color-scheme: dark){ .seg button.on{background:#3a3029} }
+/* 分頁內的群組小標 */
+.group-title{font-size:.9rem;font-weight:700;color:var(--ink2);margin:16px 4px 6px}
+/* 設定頁帳號卡 */
+.acctblock{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.acctblock #whoWrap{font-size:.95rem}
+.acctblock #whoWrap strong{word-break:break-all}
+#whoWrap .linklike{color:var(--err)}
+/* 紀錄頁：頁首已有標題，區塊內的舊標題與分隔線收起來 */
+#page-history #historyBlock > h3,#page-history #historyBlock > hr.sep{display:none}
+/* 穿衣間：頁首已是標題，區塊內重複的 h2 收起來 */
+#page-fitting #secTryon > .sec-head{display:none}
+/* 模型頁：群組之間的舊分隔線換成內縮分隔線 */
+#page-models hr.sep{border-top:1px solid var(--line);margin:14px -16px}
+/* 模型頁／設定頁的群組標題 */
+#page-models h3,#page-settings h3{font-size:1.02rem;font-weight:700;margin:2px 0 8px}
+/* 人物底圖：主圖限高，手機不用一直滑 */
+#page-base .main-photo{max-height:44vh}
+/* 版本資訊 */
+.verline{text-align:center;color:var(--ink2);font-size:.8rem;margin:18px 0 8px}
 </style>
 <script>
 /* 這段要比頁面內容更早跑：只要使用者設過密碼，就先把解鎖畫面掛上，
@@ -195,7 +297,7 @@ hr.sep{border:none;border-top:1px solid var(--line);margin:16px 0}
     <button class="btn primary" id="authGoBtn" style="width:100%">登入</button>
     <p class="kv" style="margin-top:10px"><button class="linklike" id="authSwitchBtn">還沒帳號？建立一個</button></p>
     <p class="kv" style="font-size:.85rem;margin-top:6px" id="authHint">第一次用雲端、或昨天只用過本機帳號的話，請按上面的「建立一個」用同一組 Email 重建，本機資料會一起搬上去。</p>
-    <p class="kv" style="font-size:.85rem;margin-top:12px">每次開啟都要重新登入；同一台裝置換人使用時，上一個人的資料會立刻從畫面清掉。換手機或電腦請用第 6 節的備份檔搬過去。</p>
+    <p class="kv" style="font-size:.85rem;margin-top:12px">每次開啟都要重新登入；同一台裝置換人使用時，上一個人的資料會立刻從畫面清掉。換手機或電腦請用「設定」頁的備份檔搬過去。</p>
     <p class="kv" style="margin-top:4px"><button class="linklike" id="forgotPwBtn">忘記密碼？用 Email 重設</button>　<button class="linklike" id="delAccountLoginBtn" style="color:var(--err)">刪除帳戶</button></p>
   </div>
 </div>
@@ -264,9 +366,43 @@ hr.sep{border:none;border-top:1px solid var(--line);margin:16px 0}
 
 <div class="wrap">
   <div class="top">
-    <h1>虛擬試穿・靜態版</h1>
-    <p class="lede">上傳全身照、從衣櫃挑 1–3 件衣服，用你自己儲存的廠商 API 直接在瀏覽器裡合成試穿圖。這個版本不需要後端，整個程式就是這一個 HTML 檔，可以打包帶走、放到 GitHub Pages／Cloudflare Pages／Vercel 上開來用。</p>
+    <h1>虛擬試穿</h1>
   </div>
+
+  <nav class="topnav" id="topnav">
+    <button class="tnav on" data-page="fitting">穿衣間</button>
+    <button class="tnav" data-page="history">試穿紀錄</button>
+    <button class="tnav" data-page="wardrobe">衣櫥</button>
+    <button class="tnav" data-page="base">人物底圖</button>
+    <button class="tnav" data-page="models">模型</button>
+    <button class="tnav" data-page="settings">設定</button>
+  </nav>
+
+  <main class="pages">
+    <section class="page on" id="page-fitting">
+      <header class="page-head"><h1>穿衣間</h1><p class="psub">選底圖、挑衣服，三步完成試穿。</p></header>
+    </section>
+    <section class="page" id="page-history">
+      <header class="page-head"><h1>試穿紀錄</h1><p class="psub">點縮圖看大圖；電腦用方向鍵、手機左右滑動切換。</p></header>
+    </section>
+    <section class="page" id="page-wardrobe">
+      <header class="page-head"><h1>衣櫥</h1><p class="psub">點照片就是選來試穿，再點一下取消，最多 3 件。</p></header>
+    </section>
+    <section class="page" id="page-base">
+      <header class="page-head"><h1>人物底圖</h1><p class="psub">單張上傳，或生成正面／左側／右側／後面的多角度底圖。</p></header>
+      <div class="seg" id="baseSeg">
+        <button type="button" class="on" data-sub="photos">單張上傳</button>
+        <button type="button" data-sub="angles">多角度生成</button>
+      </div>
+    </section>
+    <section class="page" id="page-models">
+      <header class="page-head"><h1>模型</h1><p class="psub">選廠商、填 API KEY；金鑰只存在這台裝置。</p></header>
+    </section>
+    <section class="page" id="page-settings">
+      <header class="page-head"><h1>設定</h1><p class="psub">帳號、同步、備份與垃圾桶。</p></header>
+      <div class="block acctblock" id="acctBlock" style="display:none"><span class="kv" id="whoWrap" style="display:none">目前使用者：<strong id="whoami"></strong>　<button class="linklike" id="logoutBtn">登出</button></span></div>
+    </section>
+  </main>
 
   <div class="notice" id="rescueBanner" style="display:none;border-color:var(--warn)">
     <p><strong>這台裝置還有 <span id="rescueCount">0</span> 筆資料不屬於目前這個帳號</strong></p>
@@ -277,18 +413,17 @@ hr.sep{border:none;border-top:1px solid var(--line);margin:16px 0}
   <div class="notice">
     <p><strong>先講清楚三件事：</strong></p>
     <p class="small">1．資料只存在這台裝置的瀏覽器裡（照片存 IndexedDB、設定存 localStorage）。換瀏覽器、換裝置或清除瀏覽器資料，照片和設定就不見了，要重新上傳、重新填金鑰。原本那個 App 裡的照片、衣櫃、模型設定<strong>不會</strong>自動帶過來，這一版從空白開始。</p>
-    <p class="small">2．靜態版<strong>沒有</strong> Muse 內建生圖。生成時是瀏覽器拿你的照片和金鑰，直接去叫你選的那家廠商 API，所以要先在下面「模型設定」存好至少一組模型才能生成；還沒存的話，生成按鈕會引導你先新增。</p>
+    <p class="small">2．靜態版<strong>沒有</strong> Muse 內建生圖。生成時是瀏覽器拿你的照片和金鑰，直接去叫你選的那家廠商 API，所以要先在「模型」頁存好至少一組模型才能生成；還沒存的話，生成按鈕會引導你先新增。</p>
     <p class="small">3．在中國能不能連上，取決於部署網址和廠商：github.io 通常打得開，workers.dev／vercel.app 常被擋；OpenAI、Google、Meta 的 API 在中國連不上，智譜連得上但它的生圖接口只吃文字、不能拿照片試穿（見模型清單標示）。做好後請在當地實際開一次、跑一張圖確認。</p>
     <p style="margin-top:10px">
       <button class="btn" id="exportBtn">⬇ 下載這支程式（單一 HTML 檔）</button>
       <span class="kv">下載回去就是完整程式，解壓／部署都不需要後端；放到任何靜態空間就能用。</span>
-      <span class="kv" id="whoWrap" style="display:none">　｜　目前使用者：<strong id="whoami"></strong>　<button class="linklike" id="logoutBtn">登出</button></span>
     </p>
   </div>
 
   <!-- 1. 人物照片 -->
   <section class="block" id="secPhotos">
-    <div class="sec-head"><h2>1．人物照片</h2><span class="hint">點照片庫裡的任一張，設為目前要試穿的底圖；也可以生成下面的「多角度底圖」來用。</span></div>
+    <div class="sec-head"><h2>照片庫</h2><span class="hint">點任一張設為目前底圖；也可以生成下面的多角度底圖來用。</span></div>
     <div class="main-photo" id="mainPhotoBox"><span class="kv">還沒有選照片，先從下面上傳一張全身照。</span></div>
     <div class="row" style="display:flex;gap:8px;flex-wrap:wrap">
       <label class="btn primary" for="photoUpload">上傳全身照</label>
@@ -303,11 +438,12 @@ hr.sep{border:none;border-top:1px solid var(--line);margin:16px 0}
 
   <!-- 2. 衣櫃 -->
   <section class="block" id="secWardrobe">
-    <div class="sec-head"><h2>2．衣櫃</h2><span class="hint">直接點照片就是選來試穿，再點一下取消，一次最多 3 件；照片下方的「複製這件」會再產生一件，方便同款不同色。每件都可再編輯品牌、名稱、分類、價格、網址、備註或換照片。</span></div>
+    <div class="sec-head"><h2>衣服</h2><span class="hint">照片下方的按鈕可複製、編輯、刪除或放大；複製會保留品牌與分類，方便做同款不同色。</span></div>
     <div class="form-grid">
       <div>
-        <label class="fl" for="wFile">用上傳照片新增</label>
-        <input type="file" id="wFile" accept="image/*" />
+        <label class="fl">用上傳照片新增</label>
+        <input type="file" id="wFile" accept="image/*" hidden />
+        <label class="btn primary" for="wFile">上傳衣服照片</label>
       </div>
       <div>
         <label class="fl" for="wLink">或貼商品連結／圖片網址抓圖</label>
@@ -341,9 +477,12 @@ hr.sep{border:none;border-top:1px solid var(--line);margin:16px 0}
 
   <!-- 3. 試穿 -->
   <section class="block" id="secTryon">
-    <div class="sec-head"><h2>3．試穿</h2><span class="hint">用目前的人物底圖 ＋ 衣櫃選好的 1–3 張照片合成：衣櫃照片裡 MODEL 身上穿的整套上下身（含洋裝、外套、鞋子），會換到底圖那個人身上。單張生活照當底圖時會保留原背景；用多角度底圖時是素色背景。</span></div>
+    <div class="sec-head"><h2>穿衣間</h2></div>
     <p class="kv" id="tryonSummary">尚未選底圖與衣服。</p>
-    <p class="kv">使用中的模型：<strong id="tryonModelName">（尚未設定）</strong> <span id="tryonModelPrice"></span></p>
+    <p class="kv">使用中的模型：<strong id="tryonModelName">（尚未設定）</strong> <span id="tryonModelPrice"></span> <button class="linklike" id="tryonModelLink" type="button">切換</button></p>
+    <div class="step"><span class="step-num">1</span><h3 class="step-title">選底圖</h3></div>
+    <div class="recent" id="recentBase"></div>
+    <p class="kv" style="margin:0 0 6px"><button class="linklike" id="baseMoreBtn" type="button">到人物底圖頁挑選／上傳 →</button></p>
 
     <h3 style="margin:16px 0 4px;font-family:'Noto Serif TC',serif">這次要用的照片</h3>
     <p class="kv" id="tryonPreviewEmpty">還沒選底圖與衣服：先到「1．人物照片」選一張，再到「2．衣櫃」點照片選要試穿的 1–3 件。</p>
@@ -359,7 +498,11 @@ hr.sep{border:none;border-top:1px solid var(--line);margin:16px 0}
       </div>
     </div>
     <p class="kv" style="margin:6px 0 0"><button class="linklike" id="refOpenBtn">手動指定補圖參考照</button></p>
+    <div class="step" style="margin-top:14px"><span class="step-num">2</span><h3 class="step-title">選衣服</h3></div>
+    <div class="recent" id="recentWardrobe"></div>
 
+    <div class="step" style="margin-top:14px"><span class="step-num">3</span><h3 class="step-title">生成</h3></div>
+    <div class="quality-row"><label class="switch"><input type="checkbox" id="hiQuality"><span class="track"><span class="knob"></span></span><span class="qlabel">高畫質模式（較慢、較貴）</span></label></div>
     <label class="fl" for="tryonExtra">補充提示詞（可留空，留空就用預設的試穿指令）</label>
     <textarea id="tryonExtra" rows="3" placeholder="例：外套不要扣起來、褲管要蓋住鞋面、光線自然一點、保留原本背景"></textarea>
     <p class="kv" style="margin-top:4px">這裡寫的會附加在預設指令後面，不會蓋掉「保留臉部、髮型、姿勢與身形」那些要求。確認上面的照片都對，再按開始試穿。</p>
@@ -371,15 +514,17 @@ hr.sep{border:none;border-top:1px solid var(--line);margin:16px 0}
     </div>
     <div class="progress" id="tryonProgWrap" style="display:none"><div id="tryonProg"></div></div>
     <p class="statusline" id="tryonStatus"></p>
-    <hr class="sep" />
-    <h3 style="margin:0 0 8px;font-family:'Noto Serif TC',serif">試穿紀錄</h3>
-    <div class="grid results" id="resultGrid"></div>
-    <div class="empty" id="resultEmpty">還沒有成品，選好底圖和衣服後按「開始試穿」。</div>
+    <div id="historyBlock">
+      <hr class="sep" />
+      <h3 style="margin:0 0 8px;font-family:'Noto Serif TC',serif">試穿紀錄</h3>
+      <div class="grid results" id="resultGrid"></div>
+      <div class="empty" id="resultEmpty">還沒有成品，選好底圖和衣服後按「開始試穿」。</div>
+    </div>
   </section>
 
   <!-- 4. 多角度 -->
   <section class="block" id="secAngles">
-    <div class="sec-head"><h2>4．全身多角度底圖</h2><span class="hint">勾選要當基準的人物照片（可多選，最多 4 張），一次合成 3 組、每組四個角度（正面／左側／右側／後面），全部是全身照、素色背景。點任一組裡的任一張，就選定整組當試穿底圖；有 2 組以上時可以自組一組。中途有幾張失敗的話，按「重試失敗的角度」只補缺的那幾張，不會整組重跑。</span></div>
+    <div class="sec-head"><h2>多角度生成</h2><span class="hint">勾選 1~4 張人物照片當基準，一次合成 3 組 × 四個角度（正面／左側／右側／後面）。點任一組的任一張就整組套用；失敗的角度可單獨重試。</span></div>
     <p class="kv" id="angleRefHint" style="margin:2px 0 6px">按「載入底圖」帶入人物照片，再勾選 1~4 張當基準：</p>
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin:0 0 8px">
       <button class="btn small" id="angleLoadBtn">載入底圖</button>
@@ -404,7 +549,7 @@ hr.sep{border:none;border-top:1px solid var(--line);margin:16px 0}
 
   <!-- 5. 模型設定 -->
   <section class="block" id="secModels">
-    <div class="sec-head"><h2>5．模型設定（BYOK）</h2><span class="hint">先選廠商、再挑模型，接口地址會自動帶入預設值（可以手動改），填 API KEY 按儲存就好。金鑰只存在你的瀏覽器，畫面上只顯示星號加末四碼。</span></div>
+    <div class="sec-head"><h2>新增或編輯模型</h2><span class="hint">先選廠商、再挑模型，接口地址會自動帶入預設值（可以手動改），填 API KEY 按儲存就好。金鑰只存在你的瀏覽器，畫面上只顯示星號加末四碼。</span></div>
 
     <div id="pwSetupBox" style="display:none">
       <div class="notice" style="margin:0 0 14px">
@@ -462,7 +607,7 @@ hr.sep{border:none;border-top:1px solid var(--line);margin:16px 0}
 
   <!-- 6. 備份與匯入 -->
   <section class="block" id="secBackup">
-    <div class="sec-head"><h2>6．備份、匯出與匯入</h2><span class="hint">把這台裝置的照片、衣櫃、試穿紀錄、多角度底圖與模型設定打包成一個加密檔案，帶到另一台電腦或手機匯入；也可以把自己的衣櫃與模型匯給家人朋友。</span></div>
+    <div class="sec-head"><h2>備份與匯入</h2><span class="hint">把這台裝置的照片、衣櫃、試穿紀錄、多角度底圖與模型設定打包成一個加密檔案，帶到另一台電腦或手機匯入；也可以把自己的衣櫃與模型匯給家人朋友。</span></div>
     <div style="display:flex;gap:8px;flex-wrap:wrap">
       <button class="btn primary" id="packExportBtn">匯出備份檔</button>
       <label class="btn" for="packImportFile" style="margin:0">匯入備份檔</label>
@@ -485,12 +630,21 @@ hr.sep{border:none;border-top:1px solid var(--line);margin:16px 0}
 
   <!-- 7. 垃圾桶 -->
   <section class="block" id="secTrash">
-    <div class="sec-head"><h2>7．垃圾桶</h2><span class="hint">刪掉的東西先來這裡，30 天內可以還原；「永久刪除」才會從所有裝置與雲端一起刪掉。超過 30 天會自動清空。</span><button class="btn small danger" id="trashClearAllBtn" style="margin-left:auto">全部清空</button></div>
+    <div class="sec-head"><h2>垃圾桶</h2><span class="hint">刪掉的東西先來這裡，30 天內可以還原；「永久刪除」才會從所有裝置與雲端一起刪掉。超過 30 天會自動清空。</span><button class="btn small danger" id="trashClearAllBtn" style="margin-left:auto">全部清空</button></div>
     <div class="grid cards" id="trashGrid"></div>
     <div class="empty" id="trashEmpty">垃圾桶是空的。刪掉的東西會先放這裡，可以還原。</div>
   </section>
 
-  <p class="kv" style="text-align:center;margin-top:26px">價格與免費額度資料來源：2026-11-19 查證的模型比較研究（Cloudflare 官方訂價頁、fal.ai、FASHN、各廠商文件與價格追蹤站）。價格會變動，實際以廠商帳單為準；標「未驗證」處請先在廠商後台確認再儲值。</p>
+  <nav class="tabbar" id="tabbar">
+    <button class="tab on" data-page="fitting"><svg viewBox="0 0 24 24"><path d="M8 3L4 7v13h5v-6h6v6h5V7l-4-4z"/></svg><span>穿衣間</span></button>
+    <button class="tab" data-page="history"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/></svg><span>紀錄</span></button>
+    <button class="tab" data-page="wardrobe"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M9 4v16M4 9h16"/></svg><span>衣櫥</span></button>
+    <button class="tab" data-page="base"><svg viewBox="0 0 24 24"><circle cx="12" cy="7" r="3.5"/><path d="M5 20c0-4 3-6 7-6s7 2 7 6"/></svg><span>底圖</span></button>
+    <button class="tab" data-page="models"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg><span>模型</span></button>
+    <button class="tab" data-page="settings"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.5"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4 4l2 2M18 18l2 2M20 4l-2 2M6 18l-2 2"/></svg><span>設定</span></button>
+  </nav>
+
+  <p class="kv" id="priceNote" style="text-align:center;margin-top:26px">價格與免費額度資料來源：2026-11-19 查證的模型比較研究（Cloudflare 官方訂價頁、fal.ai、FASHN、各廠商文件與價格追蹤站）。價格會變動，實際以廠商帳單為準；標「未驗證」處請先在廠商後台確認再儲值。</p>
 </div>
 
 <!-- viewer -->
@@ -499,6 +653,9 @@ hr.sep{border:none;border-top:1px solid var(--line);margin:16px 0}
     <button id="vZoomOut">－ 縮小</button>
     <button id="vZoomReset">原始比例</button>
     <button id="vZoomIn">＋ 放大</button>
+    <button id="vPrev" style="display:none">‹ 上一張</button>
+    <span id="vCount" style="display:none"></span>
+    <button id="vNext" style="display:none">下一張 ›</button>
     <button id="vShare" style="display:none">📤 存到相簿／分享</button>
     <button id="vSave">⬇ 存檔</button>
     <button id="vClose">✕ 關閉</button>
@@ -557,7 +714,7 @@ hr.sep{border:none;border-top:1px solid var(--line);margin:16px 0}
     </div>
     <p class="kv" style="margin-top:0">這個程式不內建金鑰，要用你自己的廠商 API KEY。Key 只會存在這個瀏覽器、也只會送到你選的那家廠商。</p>
     <div id="suSyncHint" class="notice" style="display:none;margin:0 0 12px;border-color:var(--warn);box-shadow:none">
-      <p class="small" style="margin:0"><strong>如果你在別台裝置已經設定過模型與衣櫃</strong>，先在那台用同一個帳號登入並按第 6 節的「立即同步」，把資料傳上雲端；然後回到這裡按下面的按鈕把它們抓下來。</p>
+      <p class="small" style="margin:0"><strong>如果你在別台裝置已經設定過模型與衣櫃</strong>，先在那台用同一個帳號登入並按「設定」頁的「立即同步」，把資料傳上雲端；然後回到這裡按下面的按鈕把它們抓下來。</p>
       <p style="margin:8px 0 0"><button class="btn small" id="suPullBtn">從雲端重新同步</button></p>
     </div>
 
@@ -1871,13 +2028,13 @@ async function generateWithActiveModel(images, prompt){
 function guardModel(){
   var m=activeModel();
   if(!m){
-    toast("還沒有可用的模型：先到下面「模型設定」存一組。");
+    toast("還沒有可用的模型：先到「模型」頁存一組。");
     try{ $("secModels").scrollIntoView({behavior:"smooth"}); }catch(e){}
     return null;
   }
   if(!modelCanTryOn(m)){
     toast("使用中的模型不能試穿，請換一組。");
-    $("tryonStatus").innerHTML="<span class='err-text'>使用中的「"+esc(m.modelName)+"」只能文字生圖、不能試穿，生成已擋下（不會扣錢）。請到模型設定切換成能試穿的模型。</span>";
+    $("tryonStatus").innerHTML="<span class='err-text'>使用中的「"+esc(m.modelName)+"」只能文字生圖、不能試穿，生成已擋下（不會扣錢）。請到「模型」頁切換成能試穿的模型。</span>";
     return null;
   }
   return m;
@@ -1988,7 +2145,7 @@ function fillRefSelect(){
   else if(ref) note.textContent="這次會用「"+ref.label+"」補手腳、下半身與身體比例；只補身體，不會抄它的衣服、姿勢或背景。";
   else if(refChoice==="none") note.textContent="已設為不補：底圖沒拍到的部位會由模型自己補，比例可能會偏。";
   else if(refChoice==="none-strict") note.textContent="已設為不補（完全照底圖）：不會補底圖沒拍到的部位，嚴格照底圖。";
-  else note.textContent="照片庫沒有其他照片可以當參考，先到第 1 節多傳一張看得到手腳／下半身的照片。";
+  else note.textContent="照片庫沒有其他照片可以當參考，先到「人物底圖」頁多傳一張看得到手腳／下半身的照片。";
 }
 $("tryonRefSel").addEventListener("change", function(){
   refChoice=this.value; saveRefChoice(); fillRefSelect(); renderTryonSummary();
@@ -2057,14 +2214,14 @@ function renderTryonPreview(base, items){
 function renderResults(){
   var g=$("resultGrid"); g.innerHTML="";
   $("resultEmpty").style.display=state.results.length?"none":"block";
-  state.results.forEach(function(r){
+  state.results.forEach(function(r, ri){
     var card=document.createElement("div"); card.className="card";
     card.innerHTML="<div class='ph'><img alt='試穿成品'/></div><div class='bd'><div class='meta' style='font-size:.78rem'>"+esc(r.when)+"　"+esc(r.items)+"</div>"+
       "<div class='row'><button class='linklike' data-a='save'>儲存</button><button class='linklike' data-a='del' style='color:var(--err)'>刪除</button><button class='linklike' data-a='model'>模型</button></div>"+
       "<div class='modelinfo'></div></div>";
     var thumb=card.querySelector("img"); thumb.src=r.dataUrl;
     thumb.title="點一下看大圖（可縮放，也能直接下載）";
-    thumb.addEventListener("click", function(){ openViewer(r.dataUrl, "tryon-"+r.id+".jpg"); });
+    thumb.addEventListener("click", function(){ openResultViewer(ri); });
     var sv=card.querySelector("[data-a=save]");
     sv.addEventListener("click", function(){
       if(canShareFiles()) shareImageTo(r.dataUrl,"tryon-"+r.id+".jpg");
@@ -2133,7 +2290,7 @@ async function runTryon(){
   }catch(e){
     hudHide();
     var msg=e.message||String(e);
-    if(msg==="NO_MODEL"){ $("tryonStatus").innerHTML="<span class='err-text'>還沒有模型，請先到模型設定新增一組。</span>"; }
+    if(msg==="NO_MODEL"){ $("tryonStatus").innerHTML="<span class='err-text'>還沒有模型，請先到「模型」頁新增一組。</span>"; }
     else if(msg.indexOf("BLOCKED::")===0){ $("tryonStatus").innerHTML="<span class='err-text'>"+esc(msg.slice(9))+"</span>"; }
     else{
       $("tryonStatus").innerHTML="<span class='err-text'>生成失敗："+esc(msg)+"</span>";
@@ -2497,15 +2654,55 @@ async function saveImageTo(dataUrl,name){
   toast(canShareFiles()?"已下載到「檔案／下載」；要直接進相簿請按「存到相簿」。" : "已下載："+name);
 }
 
+var viewerList=null, viewerIndex=-1;
 function openViewer(src, name){
+  viewerList=null; viewerIndex=-1;
+  showViewerImage(src, name);
+}
+function openResultViewer(index){
+  var list=state.results;
+  if(!list || !list.length) return;
+  viewerList=list; viewerIndex=index;
+  var r=list[index];
+  showViewerImage(r.dataUrl, "tryon-"+r.id+".jpg");
+}
+function showViewerImage(src, name){
   var img=$("vimg"); img.src=src; vScale=1; vX=0; vY=0; applyViewerTransform();
   viewerFile={ dataUrl:src, name:name||"tryon.jpg" };
   $("vShare").style.display=canShareFiles()?"inline-flex":"none";
+  var hasNav=viewerList && viewerList.length>1;
+  $("vPrev").style.display=hasNav?"inline-flex":"none";
+  $("vNext").style.display=hasNav?"inline-flex":"none";
+  $("vCount").style.display=hasNav?"inline":"none";
+  if(hasNav) $("vCount").textContent=(viewerIndex+1)+" / "+viewerList.length;
   $("viewer").classList.add("show");
+}
+function switchViewer(dir){
+  if(!viewerList || viewerList.length<2) return;
+  var n=viewerIndex+dir;
+  if(n<0) n=viewerList.length-1;
+  if(n>=viewerList.length) n=0;
+  viewerIndex=n;
+  var r=viewerList[n];
+  showViewerImage(r.dataUrl, "tryon-"+r.id+".jpg");
 }
 $("vSave").addEventListener("click", function(){ if(viewerFile) saveImageTo(viewerFile.dataUrl, viewerFile.name); });
 $("vShare").addEventListener("click", function(){ if(viewerFile) shareImageTo(viewerFile.dataUrl, viewerFile.name); });
 $("vClose").addEventListener("click", function(){ $("viewer").classList.remove("show"); });
+$("vPrev").addEventListener("click", function(){ switchViewer(-1); });
+$("vNext").addEventListener("click", function(){ switchViewer(1); });
+/* 手機：左右滑切換上一張／下一張 */
+var vTouchStart=null;
+$("vstage").addEventListener("touchstart", function(e){
+  if(!viewerList || viewerList.length<2) return;
+  vTouchStart=e.touches[0].clientX;
+}, {passive:true});
+$("vstage").addEventListener("touchend", function(e){
+  if(vTouchStart===null) return;
+  var dx=e.changedTouches[0].clientX - vTouchStart;
+  vTouchStart=null;
+  if(Math.abs(dx)>50) switchViewer(dx<0?1:-1);
+}, {passive:true});
 $("vZoomIn").addEventListener("click", function(){ vScale=Math.min(6,vScale*1.3); applyViewerTransform(); });
 $("vZoomOut").addEventListener("click", function(){ vScale=Math.max(0.2,vScale/1.3); applyViewerTransform(); });
 $("vZoomReset").addEventListener("click", function(){ vScale=1; vX=0; vY=0; applyViewerTransform(); });
@@ -2599,10 +2796,10 @@ async function startUserSession(acc,pw){
   try{ localStorage.setItem("tryonStatic.lastLocalUser.v1", acc.id); }catch(e){}
   sessionKey = hasSubtle()? await deriveKek(pw, acc.salt) : null;
   await loadUserData();
-  if(sessionKey){ var badK=await loadKeysFromStorage(); if(badK && badK.length) toast("有 "+badK.length+" 組模型金鑰解不開（可能密碼重設過），請到模型設定重新輸入。"); }
+  if(sessionKey){ var badK=await loadKeysFromStorage(); if(badK && badK.length) toast("有 "+badK.length+" 組模型金鑰解不開（可能密碼重設過），請到「模型」頁重新輸入。"); }
   $("authOverlay").classList.remove("show");
   document.documentElement.classList.remove("auth-pending");
-  $("whoWrap").style.display="inline"; $("whoami").textContent=acc.email;
+  $("whoWrap").style.display="block"; $("acctBlock").style.display="flex"; $("whoami").textContent=acc.email;
   $("authPw").value=""; $("authPw2").value=""; $("authErr").textContent="";
   renderPhotos(); renderWardrobe(); renderResults(); renderAngleGroups(); renderModels();
   renderTryonSummary(); refreshPwSetup(); refreshLock();
@@ -2617,7 +2814,7 @@ function logoutAccount(){
   state.photos=[]; state.wardrobe=[]; state.results=[]; state.angleGroups=[]; state.models=[];
   state.activeModelId=null; state.selectedPhotoId=null; state.selectedWardrobe={}; state.activeAngleGroupId=null;
   state.lastTryonFail=null; state.trash=[];
-  $("whoWrap").style.display="none"; $("whoami").textContent="";
+  $("whoWrap").style.display="none"; $("acctBlock").style.display="none"; $("whoami").textContent="";
   showRescueBanner(0);
   renderPhotos(); renderWardrobe(); renderResults(); renderAngleGroups(); renderModels(); renderTryonSummary(); renderTrash();
   document.documentElement.classList.add("auth-pending");
@@ -2685,7 +2882,7 @@ async function submitAuth(){
             /* 網路或跨域不通：先讓這個人用本機帳號進去，資料不會不見 */
             var acc2=await loginAccount(email,pw);
             await startUserSession(acc2,pw);
-            toast("連不到雲端，先用本機帳號登入；稍後可在第 6 節按「立即同步」再試。");
+            toast("連不到雲端，先用本機帳號登入；稍後可在「設定」頁按「立即同步」再試。");
             return;
           }
           throw e;
@@ -2718,7 +2915,7 @@ async function pullFromCloud(){
       $("setupModal").classList.remove("show");
       toast("已從雲端同步 "+state.models.length+" 組模型、衣櫃 "+state.wardrobe.length+" 件。");
     } else {
-      toast("雲端上還沒有模型。請先在有資料的那台裝置登入同一帳號，按第 6 節的「立即同步」把資料傳上來。");
+      toast("雲端上還沒有模型。請先在有資料的那台裝置登入同一帳號，按「設定」頁的「立即同步」把資料傳上來。");
     }
   }catch(e){ toast("同步失敗："+(e.message||e)); }
   if(btn){ btn.disabled=false; btn.textContent="從雲端重新同步"; }
@@ -2826,7 +3023,7 @@ async function dedupePhotosByFp(){
   }
   if(!dupes.length) return 0;
   for(var j=0;j<dupes.length;j++) await trashItem("photos", dupes[j]);
-  toast("已把 "+dupes.length+" 張重複照片移進垃圾桶（第 7 節可還原）。");
+  toast("已把 "+dupes.length+" 張重複照片移進垃圾桶（「設定」頁的垃圾桶可還原）。");
   return dupes.length;
 }
 async function dataInventory(){
@@ -2967,9 +3164,108 @@ function renderTrash(){
   });
 }
 
+/* ============ V2 分頁導航 ============ */
+function setupPages(){
+  /* 把 V1 的各 section 依功能搬到對應分頁。元素 id 不變，渲染函數與事件照舊。 */
+  var fitting=$("page-fitting"), hist=$("page-history"), ward=$("page-wardrobe");
+  var base=$("page-base"), models=$("page-models"), sets=$("page-settings");
+  if(fitting && $("secTryon")) fitting.appendChild($("secTryon"));
+  if(hist && $("historyBlock")) hist.appendChild($("historyBlock"));
+  if(ward && $("secWardrobe")) ward.appendChild($("secWardrobe"));
+  if(base && $("secPhotos")) base.appendChild($("secPhotos"));
+  if(base && $("secAngles")) base.appendChild($("secAngles"));
+  if(models && $("secModels")) models.appendChild($("secModels"));
+  if(models && $("priceNote")) models.appendChild($("priceNote"));
+  if(sets && $("secBackup")) sets.appendChild($("secBackup"));
+  if(sets && $("secTrash")) sets.appendChild($("secTrash"));
+  var notice3=$("exportBtn")?$("exportBtn").closest(".notice"):null;
+  if(sets && notice3) sets.appendChild(notice3);
+  if(sets && $("rescueBanner")) sets.appendChild($("rescueBanner"));
+  if(sets){
+    var ver=document.createElement("p"); ver.className="verline"; ver.textContent="虛擬試穿 V2・2026-11-25";
+    sets.appendChild(ver);
+  }
+}
+function switchPage(name){
+  document.querySelectorAll(".page").forEach(function(p){ p.classList.toggle("on", p.id==="page-"+name); });
+  document.querySelectorAll(".tnav").forEach(function(t){ t.classList.toggle("on", t.getAttribute("data-page")===name); });
+  document.querySelectorAll(".tab").forEach(function(t){ t.classList.toggle("on", t.getAttribute("data-page")===name); });
+  try{ window.scrollTo(0,0); }catch(e){}
+}
+/* 人物底圖子分頁：單張上傳／多角度生成 */
+function setBaseSub(name){
+  var seg=$("baseSeg"); if(!seg) return;
+  seg.querySelectorAll("button").forEach(function(b){ b.classList.toggle("on", b.getAttribute("data-sub")===name); });
+  if($("secPhotos")) $("secPhotos").style.display = name==="photos" ? "" : "none";
+  if($("secAngles")) $("secAngles").style.display = name==="angles" ? "" : "none";
+}
+function bindNav(){
+  document.querySelectorAll(".tnav,.tab").forEach(function(b){
+    b.addEventListener("click", function(){ switchPage(b.getAttribute("data-page")); });
+  });
+  if($("baseSeg")) $("baseSeg").addEventListener("click", function(e){
+    var b=e.target.closest ? e.target.closest("button[data-sub]") : null;
+    if(b) setBaseSub(b.getAttribute("data-sub"));
+  });
+  if($("baseMoreBtn")) $("baseMoreBtn").addEventListener("click", function(){ switchPage("base"); setBaseSub("photos"); });
+  if($("tryonModelLink")) $("tryonModelLink").addEventListener("click", function(){ switchPage("models"); });
+}
+
+/* 最近衣服快捷：穿衣間「選衣服」區，點一下就選/取消 */
+function renderRecent(){
+  var rw=$("recentWardrobe");
+  if(!rw) return;
+  rw.innerHTML="";
+  state.wardrobe.slice(0,8).forEach(function(w){
+    var on=!!state.selectedWardrobe[w.id];
+    var b=document.createElement("button"); b.type="button";
+    b.className="rchip"+(on?" on":"");
+    b.innerHTML="<img alt=''/><span>"+esc(w.name)+"</span>";
+    b.querySelector("img").src=w.dataUrl;
+    b.addEventListener("click", function(){
+      if(on){ delete state.selectedWardrobe[w.id]; }
+      else{
+        var n=Object.keys(state.selectedWardrobe).filter(function(k){return state.selectedWardrobe[k];}).length;
+        if(n>=3){ toast("一次最多選 3 件一起試穿。"); return; }
+        state.selectedWardrobe[w.id]=true;
+      }
+      renderRecent(); renderWardrobe(); renderTryonSummary();
+    });
+    rw.appendChild(b);
+  });
+  if(!state.wardrobe.length){ rw.innerHTML="<span class='kv'>還沒有衣服，先到「衣櫥」新增。</span>"; }
+}
+/* 最近底圖快捷：穿衣間「選底圖」區，點一下就換底圖 */
+function renderRecentBase(){
+  var rb=$("recentBase");
+  if(!rb) return;
+  rb.innerHTML="";
+  state.photos.slice(0,10).forEach(function(p){
+    var on=p.id===state.selectedPhotoId;
+    var b=document.createElement("button"); b.type="button";
+    b.className="rchip"+(on?" on":"");
+    b.title=p.multiView?"4 視角底圖":(p.label||"人物底圖");
+    b.innerHTML="<img alt=''/><span>"+(p.multiView?"4 視角":"底圖")+"</span>";
+    b.querySelector("img").src=p.dataUrl;
+    b.addEventListener("click", function(){
+      state.selectedPhotoId=p.id; state.activeAngleGroupId=null;
+      renderPhotos(); renderTryonSummary(); renderAngleGroups(); renderRecentBase();
+    });
+    rb.appendChild(b);
+  });
+  if(!state.photos.length){ rb.innerHTML="<span class='kv'>還沒有底圖，先到「人物底圖」上傳一張全身照。</span>"; }
+}
+/* 高畫質開關：切 4B（快省）／9B（精細貴） */
+$("hiQuality").addEventListener("change", function(){
+  var want = this.checked ? /9b/i : /4b/i;
+  var pick = state.models.find(function(m){ return want.test(m.modelName||"") && modelCanTryOn(m); });
+  if(pick){ state.activeModelId=pick.id; saveModels(); renderModels(); renderTryonSummary(); toast("已切換到 "+pick.modelName); }
+  else { this.checked=!this.checked; toast(this.checked?"找不到 9B 模型，請到「模型」頁存一組。":"找不到 4B 模型。"); }
+});
+
 function renderAll(){
   renderPhotos(); renderWardrobe(); renderResults(); renderAngleGroups(); renderModels();
-  renderTryonSummary(); refreshPwSetup(); renderTrash();
+  renderTryonSummary(); refreshPwSetup(); renderTrash(); renderRecent(); renderRecentBase();
 }
 function stateArrayOf(kind){
   if(kind==="photos") return state.photos;
@@ -3089,7 +3385,7 @@ async function applyRemoteItem(it){
 }
 async function syncNow(opts){
   opts=opts||{};
-  if(!syncEnabled()){ if(!opts.silent) toast("還沒有設定同步伺服器（在登入畫面或第 6 節設定）。"); return; }
+  if(!syncEnabled()){ if(!opts.silent) toast("還沒有設定同步伺服器（在登入畫面或「設定」頁設定）。"); return; }
   if(!syncToken){ if(!opts.silent) toast("請先登入雲端帳號。"); return; }
   if(syncBusy) return;
   syncBusy=true; setSyncStatus("同步中…");
@@ -3354,17 +3650,17 @@ async function startCloudSession(pw){
   state.unlocked=true;
   var moved=await adoptLocalIntoCloud();
   await loadUserData();
-  if(sessionKey){ var badK2=await loadKeysFromStorage(); if(badK2 && badK2.length) toast("有 "+badK2.length+" 組模型金鑰解不開（可能密碼重設過），請到模型設定重新輸入。"); }
+  if(sessionKey){ var badK2=await loadKeysFromStorage(); if(badK2 && badK2.length) toast("有 "+badK2.length+" 組模型金鑰解不開（可能密碼重設過），請到「模型」頁重新輸入。"); }
   await syncNow({silent:true});
   $("authOverlay").classList.remove("show");
   document.documentElement.classList.remove("auth-pending");
-  $("whoWrap").style.display="inline"; $("whoami").textContent=state.accountEmail;
+  $("whoWrap").style.display="block"; $("acctBlock").style.display="flex"; $("whoami").textContent=state.accountEmail;
   $("authPw").value=""; $("authPw2").value=""; $("authErr").textContent="";
   renderAll(); refreshSyncStatus(); startAutoSync(); renderDataLine();
   toast("已登入並同步："+state.accountEmail+(moved?("（已把這台裝置原本的 "+moved+" 筆資料搬進雲端帳號）"):""));
   hintOrphanData();
   if(!moved && !state.models.length && !state.wardrobe.length){
-    toast("雲端與這台裝置都還沒有資料。若你先前在別台裝置用過，請到那台用同一個帳號登入，按第 6 節「立即同步」把資料傳上來。");
+    toast("雲端與這台裝置都還沒有資料。若你先前在別台裝置用過，請到那台用同一個帳號登入，按「設定」頁「立即同步」把資料傳上來。");
   }
 }
 
@@ -3571,7 +3867,7 @@ function suNeedsModelText(){
 $("suPullBtn").addEventListener("click", function(){ pullFromCloud(); });
 function skipSetup(){
   $("setupModal").classList.remove("show");
-  toast("沒有模型時還不能生成，但可以先到第 6 節看資料狀況、按「立即同步」。");
+  toast("沒有模型時還不能生成，但可以先到「設定」頁看資料狀況、按「立即同步」。");
   try{ $("secBackup").scrollIntoView({behavior:"smooth",block:"start"}); }catch(e){}
   renderDataLine();
 }
@@ -3648,6 +3944,9 @@ $("exportBtn").addEventListener("click", function(){
 
 /* ============ 啟動 ============ */
 (async function init(){
+  setupPages();
+  bindNav();
+  setBaseSub("photos");
   loadModelCache();
   loadRefChoice();
   fillVendorSelect();
