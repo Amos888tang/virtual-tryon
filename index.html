@@ -69,14 +69,14 @@ label.fl{display:block;font-size:.9rem;color:var(--ink2);margin:10px 0 4px}
 .card .row{display:flex;flex-wrap:wrap;gap:6px 12px;margin-top:8px}
 .linklike{color:var(--accent);text-decoration:underline;text-underline-offset:3px;background:none;border:none;padding:6px 2px;font-size:.9rem;min-height:2rem}
 /* 試穿前確認用的縮圖 */
-.tryon-preview{display:none;gap:10px;flex-wrap:wrap;align-items:flex-start;margin:6px 0 2px}
-.tryon-preview .pv{position:relative;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--surface2);width:104px}
-.tryon-preview .pv.base{width:132px;border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-soft)}
-.tryon-preview .pv.ref{width:120px;border-style:dashed}
+.tryon-preview{display:none;gap:10px;flex-wrap:wrap;align-items:stretch;margin:6px 0 2px}
+.tryon-preview .pv{position:relative;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--surface2);width:104px;display:flex;flex-direction:column}
+.tryon-preview .pv.base{width:104px;border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-soft)}
+.tryon-preview .pv.ref{width:104px;border-style:dashed}
 .tryon-preview .pv.ref .tag{background:var(--ink2);color:var(--bg)}
 .tryon-preview .pv img{width:100%;aspect-ratio:3/4;object-fit:cover;display:block}
 .tryon-preview .pv .tag{position:absolute;left:0;top:0;background:var(--accent);color:var(--accent-ink);font-size:.72rem;padding:2px 7px;border-bottom-right-radius:8px}
-.tryon-preview .pv .cap{font-size:.78rem;padding:4px 6px;color:var(--ink2);word-break:break-all;line-height:1.3}
+.tryon-preview .pv .cap{font-size:.78rem;padding:4px 6px;color:var(--ink2);word-break:break-all;line-height:1.3;min-height:2.9em;flex:1 1 auto}
 .tryon-preview .pv .rm{position:absolute;right:3px;top:3px;width:1.5rem;height:1.5rem;border-radius:50%;border:1px solid var(--line);background:var(--surface);color:var(--err);font-size:.8rem;line-height:1;padding:0;min-height:0}
 .card .modelinfo{display:none;font-size:.82rem;color:var(--ink2);margin-top:6px;padding:6px 8px;background:var(--surface2);border-radius:8px;word-break:break-all;line-height:1.45}
 .thumb{position:relative;border:2px solid var(--line);border-radius:10px;overflow:hidden;background:var(--surface2);aspect-ratio:3/4;cursor:pointer;padding:6px 12px}
@@ -539,6 +539,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
     <p class="kv" style="margin:6px 0 0"><button class="linklike" id="refOpenBtn">手動指定補圖參考照</button></p>
     <div class="step" style="margin-top:16px"><span class="step-num">3</span><h3 class="step-title">生成</h3></div>
     <div class="quality-row"><label class="switch"><input type="checkbox" id="hiQuality"><span class="track"><span class="knob"></span></span><span class="qlabel">高畫質模式（較慢、較貴）</span></label></div>
+    <p class="kv" style="margin:-6px 0 10px"><span id="qualitySwitchHint"></span> <button class="linklike" id="qualityGoBtn" type="button">設定畫質模型</button></p>
     <label class="fl" for="tryonExtra">補充提示詞（可留空，留空就用預設的試穿指令）</label>
     <textarea id="tryonExtra" rows="3" placeholder="例：外套不要扣起來、褲管要蓋住鞋面、光線自然一點、保留原本背景"></textarea>
     <p class="kv" style="margin-top:4px">這裡寫的會附加在預設指令後面，不會蓋掉「保留臉部、髮型、姿勢與身形」那些要求。確認上面的照片都對，再按開始試穿。</p>
@@ -634,6 +635,15 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
     <h3 style="margin:0 0 4px;font-family:'Noto Serif TC',serif">已儲存的模型</h3>
     <div id="modelList"></div>
     <div class="empty" id="modelEmpty">還沒存任何模型。先在上面選廠商、挑模型、貼 API KEY 按儲存——存好第一組之後會請你設定解鎖密碼。</div>
+
+    <hr class="sep" />
+    <h3 style="margin:0 0 6px;font-family:'Noto Serif TC',serif">畫質對應</h3>
+    <p class="kv">「高畫質模式」開關會依這裡自動切換使用中的模型：關閉時用一般畫質、打開時用高畫質。兩組都指定好，開關才有作用；設定只存在這台裝置。</p>
+    <div class="form-grid">
+      <div><label class="fl" for="qNormal">一般畫質模型（開關關閉時）</label><select id="qNormal"></select></div>
+      <div><label class="fl" for="qHigh">高畫質模型（開關打開時）</label><select id="qHigh"></select></div>
+    </div>
+    <p class="kv" id="qualityHint" style="margin:8px 0 0"></p>
 
     <hr class="sep" />
     <h3 style="margin:0 0 6px;font-family:'Noto Serif TC',serif">測試連線</h3>
@@ -1010,7 +1020,7 @@ async function idbDel(store,id,opts){
   var db=await openDb(); return new Promise(function(res,rej){ var rq=db.transaction(store,"readwrite").objectStore(store).delete(id); rq.onsuccess=function(){res();}; rq.onerror=function(){rej(rq.error);}; }); }
 
 /* ============ 狀態（設定存 localStorage） ============ */
-var LS_MODELS="tryonStatic.models.v1", LS_PWHASH="tryonStatic.pwHash.v1", LS_ACTIVE="tryonStatic.activeModel.v1";
+var LS_MODELS="tryonStatic.models.v1", LS_PWHASH="tryonStatic.pwHash.v1", LS_ACTIVE="tryonStatic.activeModel.v1", LS_QUALITY="tryonStatic.qualityModel.v1";
 var state={
   photos:[], wardrobe:[], results:[], angleGroups:[],
   selectedPhotoId:null, selectedWardrobe:{}, activeAngleGroupId:null,
@@ -1024,6 +1034,11 @@ function loadSettings(){
   state.models=state.userId?all.filter(function(m){ return m.owner===state.userId; }):all;
   state.activeModelId=localStorage.getItem(LS_ACTIVE+"."+(state.userId||"guest"))||null;
   if(state.activeModelId && !state.models.some(function(m){return m.id===state.activeModelId;})) state.activeModelId=null;
+  /* 沒有記錄使用中的模型時，用「一般畫質」指定的那一組當預設 */
+  if(!state.activeModelId){
+    var qnDefault=qualityPicks().normal;
+    if(qnDefault && modelCanTryOn(qnDefault)) state.activeModelId=qnDefault.id;
+  }
   /* 舊版把 Gemini 指向 /v1beta/openai/images/edits，那條路徑不是給瀏覽器用的生圖接口，
      實測會被跨域擋掉。已存的設定直接遷移到原生的 :generateContent。 */
   var migrated=false;
@@ -1056,6 +1071,19 @@ function saveModels(opts){
 }
 function pwHash(){ return localStorage.getItem(LS_PWHASH)||null; }
 function activeModel(){ return state.models.find(function(m){return m.id===state.activeModelId;})||null; }
+/* 畫質對應：每個帳號各自記「一般畫質」與「高畫質」要用哪一組模型（只存這台裝置） */
+function readQualityMap(){ try{ return JSON.parse(localStorage.getItem(LS_QUALITY)||"{}"); }catch(e){ return {}; } }
+function qualityPicks(){
+  var map=readQualityMap(), u=map[state.userId||"guest"]||{};
+  return { normal:modelOf(u.normal), high:modelOf(u.high), on:!!u.on };
+}
+function qualityPick(high){ var p=qualityPicks(); return high?p.high:p.normal; }
+function saveQualityPick(kind, id){
+  var map=readQualityMap(), u=state.userId||"guest";
+  map[u]=map[u]||{};
+  if(id) map[u][kind]=id; else delete map[u][kind];
+  try{ localStorage.setItem(LS_QUALITY, JSON.stringify(map)); }catch(e){}
+}
 function modelOf(id){ return state.models.find(function(m){return m.id===id;})||null; }
 /* 使用者常把網址貼成 tryon-proxy.xxx.workers.dev（少了 https://），
    少了它 fetch 會當成相對路徑打到網站自己身上。這裡統一補齊。 */
@@ -1571,6 +1599,7 @@ function renderModels(){
     list.appendChild(div);
   });
   refreshPwSetup();
+  if(typeof renderQualitySelects==="function") renderQualitySelects();
 }
 </script>
 <script>
@@ -3292,12 +3321,61 @@ function renderRecentBase(){
   });
   if(!state.photos.length){ rb.innerHTML="<span class='kv'>還沒有底圖，先到「人物底圖」上傳一張全身照。</span>"; }
 }
-/* 高畫質開關：切 4B（快省）／9B（精細貴） */
+/* 畫質對應的下拉選單：列出目前帳號的所有模型 */
+function renderQualitySelects(){
+  var selN=$("qNormal"), selH=$("qHigh");
+  if(!selN||!selH) return;
+  var picks=qualityPicks();
+  function fill(sel, val){
+    sel.innerHTML="";
+    var o=document.createElement("option"); o.value=""; o.textContent="（未指定）"; sel.appendChild(o);
+    state.models.forEach(function(m){
+      var op=document.createElement("option"); op.value=m.id;
+      op.textContent=vendorLabel(m)+"・"+m.modelName+(modelCanTryOn(m)?"":"（不能試穿）");
+      sel.appendChild(op);
+    });
+    sel.value=(val && state.models.some(function(m){return m.id===val;}))?val:"";
+  }
+  fill(selN, picks.normal&&picks.normal.id);
+  fill(selH, picks.high&&picks.high.id);
+  var txt="一般畫質："+(picks.normal?picks.normal.modelName:"未指定")+"｜高畫質："+(picks.high?picks.high.modelName:"未指定");
+  var h1=$("qualityHint"); if(h1) h1.textContent=txt;
+  var h2=$("qualitySwitchHint"); if(h2) h2.textContent=txt;
+}
+function applyQualityModel(high){
+  var pick=qualityPick(high);
+  if(pick && !modelCanTryOn(pick)){ toast("指定的"+(high?"高畫質":"一般畫質")+"模型不能試穿，請換一組。"); pick=null; }
+  if(!pick){
+    /* 沒設定就沿用舊規則：找名稱有 9B／4B 的 Cloudflare 模型 */
+    var want = high ? /9b/i : /4b/i;
+    pick = state.models.find(function(m){ return want.test(m.modelName||"") && modelCanTryOn(m); });
+  }
+  if(!pick) return null;
+  state.activeModelId=pick.id; saveModels(); renderModels(); renderTryonSummary();
+  toast((high?"高畫質":"一般畫質")+"模式："+pick.modelName);
+  return pick;
+}
+if($("qNormal")) $("qNormal").addEventListener("change", function(){
+  saveQualityPick("normal", this.value); renderQualitySelects();
+  if(!$("hiQuality").checked && this.value) applyQualityModel(false);
+  toast(this.value?"已指定一般畫質模型。":"已取消一般畫質模型。");
+});
+if($("qHigh")) $("qHigh").addEventListener("change", function(){
+  saveQualityPick("high", this.value); renderQualitySelects();
+  if($("hiQuality").checked && this.value) applyQualityModel(true);
+  toast(this.value?"已指定高畫質模型。":"已取消高畫質模型。");
+});
+if($("qualityGoBtn")) $("qualityGoBtn").addEventListener("click", function(){
+  switchPage("models");
+  try{ $("qNormal").scrollIntoView({behavior:"smooth",block:"center"}); }catch(e){}
+});
 $("hiQuality").addEventListener("change", function(){
-  var want = this.checked ? /9b/i : /4b/i;
-  var pick = state.models.find(function(m){ return want.test(m.modelName||"") && modelCanTryOn(m); });
-  if(pick){ state.activeModelId=pick.id; saveModels(); renderModels(); renderTryonSummary(); toast("已切換到 "+pick.modelName); }
-  else { this.checked=!this.checked; toast(this.checked?"找不到 9B 模型，請到「模型」頁存一組。":"找不到 4B 模型。"); }
+  var high=this.checked;
+  if(applyQualityModel(high)) return;
+  this.checked=!high;
+  toast(high?"還沒有指定高畫質模型，請到「模型」頁的「畫質對應」設定。":"還沒有指定一般畫質模型，請到「模型」頁的「畫質對應」設定。");
+  switchPage("models");
+  try{ $("qNormal").scrollIntoView({behavior:"smooth",block:"center"}); }catch(e){}
 });
 
 function renderAll(){
