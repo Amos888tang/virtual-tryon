@@ -264,6 +264,13 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 }
 /* 人物底圖：主圖限高，手機不用一直滑 */
 #page-base .main-photo{max-width:560px;max-height:44vh;margin:10px auto}
+/* 電腦版：穿衣間「這次要用的照片」跟試穿紀錄卡片同尺寸（210px） */
+@media(min-width:1024px){
+  #page-fitting .tryon-preview .pv,
+  #page-fitting .tryon-preview .pv.base,
+  #page-fitting .tryon-preview .pv.ref{width:210px}
+  #page-fitting .tryon-preview .pv .cap{font-size:.82rem}
+}
 /* 人物底圖：寬螢幕左邊主圖、右邊照片庫 */
 .base-cols{display:block}
 @media(min-width:1024px){
