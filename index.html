@@ -30,7 +30,7 @@ button,[role="button"],select,summary,input:not([type="checkbox"],[type="radio"]
 button{cursor:pointer}
 h1,h2{font-family:"Noto Serif TC",serif;margin:0}
 h2{font-size:1.35rem}
-.wrap{max-width:none;margin:0;padding:0 clamp(16px,3vw,44px) 64px}
+.wrap{max-width:none;margin:0;padding:0 clamp(16px,2.5vw,24px) 64px}
 .top{padding:26px 0 6px}
 .top h1{font-size:1.9rem}
 .lede{color:var(--ink2);max-width:46em;margin:8px 0 0}
@@ -171,7 +171,7 @@ body{padding-bottom:70px}
 /* 頂部導覽（電腦） */
 .topnav{display:none;position:sticky;top:0;z-index:40;background:rgba(250,246,240,.92);
   -webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px);
-  border-bottom:1px solid var(--line);padding:0 clamp(16px,3vw,44px);gap:2px;flex-wrap:wrap}
+  border-bottom:1px solid var(--line);padding:0 clamp(16px,2.5vw,24px);gap:2px;flex-wrap:wrap}
 .topnav .tnav{border:none;background:none;color:var(--ink2);font-size:1rem;font-weight:600;
   padding:14px 14px;border-bottom:2.5px solid transparent;cursor:pointer;font-family:inherit}
 .topnav .tnav.on{color:var(--accent);border-bottom-color:var(--accent)}
@@ -229,7 +229,7 @@ body{padding-bottom:70px}
 .page-head .psub{margin:5px 0 0;color:var(--ink2);font-size:.92rem;line-height:1.5}
 .page-head .pact{margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
 .page-head + .block,.page-head + .seg + .block{margin-top:12px}
-.block{background:var(--surface);border:1px solid var(--line);border-radius:16px;box-shadow:none;padding:16px;margin:12px 0}
+.block{background:var(--surface);border:1px solid var(--line);border-radius:16px;box-shadow:none;padding:14px;margin:12px 0}
 .sec-head{margin-bottom:8px}
 .sec-head h2{font-size:1.02rem;font-weight:700;letter-spacing:0}
 .sec-head .hint{font-size:.82rem;line-height:1.5;max-width:96ch}
@@ -260,7 +260,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 /* 穿衣間：寬螢幕左右兩欄（左選圖、右確認與生成），手機維持單欄 */
 .tryon-cols{display:block}
 @media(min-width:1024px){
-  #secTryon .tryon-cols{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:0 36px;align-items:start}
+  #secTryon .tryon-cols{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:0 28px;align-items:start}
 }
 /* 人物底圖：主圖限高，手機不用一直滑 */
 #page-base .main-photo{max-width:560px;max-height:44vh;margin:10px auto}
@@ -273,7 +273,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 }
 /* 電腦版：①選底圖、②選衣服的最近照片也放大（照片 210px，卡片 226px） */
 @media(min-width:1024px){
-  #page-fitting .recent{gap:12px;padding-bottom:8px}
+  #page-fitting .recent{gap:10px;padding-bottom:8px}
   #page-fitting .rchip{width:226px;padding:8px}
   #page-fitting .rchip img{width:100%;height:auto;aspect-ratio:3/4;object-fit:cover;border-radius:10px}
   #page-fitting .rchip span{font-size:.82rem;max-width:100%}
