@@ -117,6 +117,7 @@ label.fl{display:block;font-size:.9rem;color:var(--ink2);margin:10px 0 4px}
 .anglegroup.sel{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-soft)}
 .anglegrid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:8px}
 @media(max-width:560px){.anglegrid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:560px){.grid.cards{grid-template-columns:repeat(2,1fr);gap:10px}.grid.results{grid-template-columns:repeat(2,1fr);gap:10px}}
 .anglecell{background:var(--surface2);border-radius:9px;overflow:hidden;cursor:pointer;border:2px solid transparent;padding:8px 14px}
 .anglecell img{width:100%;aspect-ratio:3/4;object-fit:contain;display:block}
 .anglecell .cap{text-align:center;font-size:.82rem;color:var(--ink2);padding:4px 2px}
@@ -728,7 +729,7 @@ async function loadKeysFromStorage(){
       m.keyEnc=await encryptSecret(m.apiKey);   /* 舊版明碼資料：當場加密 */
     }
   }
-  saveModels();
+  saveModels({noStamp:true});
   return bad;
 }
 async function encryptAllKeys(){
@@ -839,7 +840,8 @@ function loadSettings(){
   });
   if(migrated) saveModels();
 }
-function saveModels(){
+function saveModels(opts){
+  opts=opts||{};
   /* 只寫出「不含明碼金鑰」的版本：金鑰以 keyEnc（密文）儲存；沒有加密能力時才退回明碼（卡片上會警示）。
      同一台裝置有多個帳號，所以要把別人的模型原封不動留下來。 */
   var mine=state.models.map(function(m){
@@ -852,7 +854,8 @@ function saveModels(){
   localStorage.setItem(LS_MODELS, JSON.stringify(others.concat(mine)));
   var k=LS_ACTIVE+"."+(state.userId||"guest");
   if(state.activeModelId) localStorage.setItem(k,state.activeModelId); else localStorage.removeItem(k);
-  if(!syncApplying){ setModelsUpdatedAt(Date.now()); scheduleSync(); }
+  /* noStamp：載入/解密回存時不更新時間戳，避免「登入時被誤設成現在」→ 反向覆蓋掉雲端較舊的模型 */
+  if(!syncApplying && !opts.noStamp){ setModelsUpdatedAt(Date.now()); scheduleSync(); }
 }
 function pwHash(){ return localStorage.getItem(LS_PWHASH)||null; }
 function activeModel(){ return state.models.find(function(m){return m.id===state.activeModelId;})||null; }
@@ -3245,9 +3248,9 @@ async function deleteAccount(){
 
 /* 一鍵清除本機資料：只清「這台裝置」，雲端與其他裝置不動。清完按「立即同步」會重新下載。 */
 async function clearLocalData(){
-  var msg="確定要清除「這台裝置」的全部資料嗎？\n\n"+
-    "會清掉：照片、衣櫃、試穿成品、多角度底圖、垃圾桶、模型設定。\n"+
-    "不會動到：雲端、其他裝置、你的帳號。\n\n"+
+  var msg="確定要清除「這台裝置」的資料嗎？\n\n"+
+    "會清掉：照片、衣櫃、試穿成品、多角度底圖、垃圾桶。\n"+
+    "不會動到：模型設定、雲端、其他裝置、你的帳號。\n\n"+
     "清完後按「立即同步」會從雲端重新下載。";
   if(!confirm(msg)) return;
   var db=await openDb();
@@ -3258,18 +3261,13 @@ async function clearLocalData(){
       tx.onsuccess=function(){res();}; tx.onerror=function(){rej(tx.error);};
     });
   }
-  /* 模型（保留別人的，只清自己的）＋時間戳 */
-  try{
-    var others=rawModels().filter(function(m){ return m.owner!==state.userId; });
-    localStorage.setItem(LS_MODELS, JSON.stringify(others));
-    localStorage.removeItem(LS_ACTIVE+"."+(state.userId||"guest"));
-    localStorage.removeItem(LS_MODELS_AT+"."+(state.userId||"guest"));
-  }catch(e){}
+  /* 不清模型設定：模型在 localStorage，是「設定」不是「資料」，
+     免得誤清之後又把空的模型推到雲端、把別台也蓋掉 */
   saveTombs([]);
-  state.photos=[]; state.wardrobe=[]; state.results=[]; state.angleGroups=[]; state.trash=[]; state.models=[];
-  state.activeModelId=null; state.selectedPhotoId=null; state.selectedWardrobe={}; state.activeAngleGroupId=null;
+  state.photos=[]; state.wardrobe=[]; state.results=[]; state.angleGroups=[]; state.trash=[];
+  state.selectedPhotoId=null; state.selectedWardrobe={}; state.activeAngleGroupId=null;
   renderAll(); renderDataLine();
-  toast("已清除本機資料。按「立即同步」從雲端重新下載。");
+  toast("已清除本機資料（模型設定保留）。按「立即同步」從雲端重新下載。");
 }
 
 /* 從雲端救回照片：刪除只會清掉「文字描述」，照片本體（R2）還在。
