@@ -271,6 +271,13 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
   #page-fitting .tryon-preview .pv.ref{width:210px}
   #page-fitting .tryon-preview .pv .cap{font-size:.82rem}
 }
+/* 電腦版：①選底圖、②選衣服的最近照片也放大（照片 210px，卡片 226px） */
+@media(min-width:1024px){
+  #page-fitting .recent{gap:12px;padding-bottom:8px}
+  #page-fitting .rchip{width:226px;padding:8px}
+  #page-fitting .rchip img{width:100%;height:auto;aspect-ratio:3/4;object-fit:cover;border-radius:10px}
+  #page-fitting .rchip span{font-size:.82rem;max-width:100%}
+}
 /* 人物底圖：寬螢幕左邊主圖、右邊照片庫 */
 .base-cols{display:block}
 @media(min-width:1024px){
