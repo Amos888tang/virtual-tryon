@@ -292,6 +292,119 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 }
 /* 版本資訊 */
 .verline{text-align:center;color:var(--ink2);font-size:.8rem;margin:18px 0 8px}
+
+/* ============ V2.1 編輯部時尚（只改視覺層） ============ */
+:root{
+  --bg:#F7F3EC; --surface:#FFFDF9; --surface2:#EFE7D9; --ink:#201A15; --ink2:#756558;
+  --line:#E2D5C3; --accent:#9C3F2A; --accent-ink:#FFF8F3; --accent-soft:#F1DFD6;
+  --chip:#EDE5D6; --shadow:0 18px 40px rgba(32,20,10,.14);
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --bg:#141110; --surface:#1E1A17; --surface2:#2A231E; --ink:#F4EBE1; --ink2:#B6A594;
+    --line:#3A2F27; --accent:#E07A5F; --accent-ink:#1B0F0A; --accent-soft:#42261D;
+    --chip:#302720; --shadow:0 18px 40px rgba(0,0,0,.5);
+  }
+}
+body{font-family:"PingFang TC","Noto Sans TC",-apple-system,BlinkMacSystemFont,"SF Pro Text",sans-serif;line-height:1.6}
+h1,h2{font-family:"Noto Serif TC",serif !important;font-weight:700;letter-spacing:.01em}
+p,h1,h2,h3{text-wrap:pretty}
+
+/* 頁首：襯線大標，像雜誌刊頭 */
+.page-head{padding:26px 2px 12px}
+.page-head h1{font-size:clamp(2.05rem,1.5rem + 1.5vw,2.6rem);line-height:1.12;letter-spacing:.01em}
+.page-head .psub{max-width:46em;font-size:.95rem;margin-top:7px;line-height:1.6}
+
+/* 導覽：細線、襯線感留白 */
+.topnav{background:rgba(247,243,236,.9);border-bottom:1px solid var(--line)}
+.topnav .tnav{font-size:.95rem;letter-spacing:.02em;padding:16px 14px}
+.topnav .tnav.on{border-bottom-width:1px}
+
+/* 區塊：拿掉白卡，改成細線分隔的版面 */
+section.block{background:transparent;border:0;border-top:1px solid var(--line);border-radius:0;box-shadow:none;padding:24px 0 6px;margin:0}
+.page-head + section.block,.page-head + .seg + section.block{border-top:0;padding-top:8px;margin-top:2px}
+.sec-head{margin-bottom:12px;gap:6px 14px}
+.sec-head h2{font-family:"Noto Serif TC",serif !important;font-size:1.32rem;font-weight:700;letter-spacing:.01em}
+.sec-head .hint{color:var(--ink2);font-size:.82rem;line-height:1.6;max-width:78ch}
+.notice{background:transparent;border:0;border-top:1px solid var(--line);border-bottom:1px solid var(--line);border-radius:0;box-shadow:none;padding:18px 0;margin:0}
+#rescueBanner{border-top:2px solid var(--warn);border-bottom:2px solid var(--warn)}
+#editBanner{border-top:1px solid var(--accent);border-bottom:1px solid var(--accent);background:transparent;padding:12px 0}
+
+/* 步驟：空心襯線數字 */
+.step{margin:4px 0 10px;gap:12px}
+.step-num{width:30px;height:30px;flex:0 0 30px;background:transparent;border:1px solid var(--accent);color:var(--accent);font-family:"Noto Serif TC",serif;font-weight:700;font-size:15px}
+.step-title{font-family:"Noto Serif TC",serif !important;font-size:1.18rem;font-weight:700;letter-spacing:.01em}
+
+/* 按鈕：方形、線框；主要動作才填色 */
+.btn{border-radius:3px;background:var(--surface);border:1px solid var(--line);font-weight:600;letter-spacing:.02em;transition:background .16s ease,border-color .16s ease,color .16s ease,transform .16s ease}
+.btn:hover{border-color:var(--accent);color:var(--accent)}
+.btn:active{transform:translateY(1px)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.primary:hover{background:var(--accent);color:var(--accent-ink);filter:brightness(1.05)}
+.btn.ghost{background:transparent}
+.btn.small{border-radius:3px}
+.btn.danger{background:transparent;border-color:var(--line);color:var(--err)}
+.btn.danger:hover{border-color:var(--err);color:var(--err)}
+::selection{background:var(--accent-soft);color:var(--ink)}
+
+/* 表單 */
+input[type=text],input[type=password],input[type=url],input[type=email],select,textarea{border-radius:3px;background:var(--surface);border-color:var(--line)}
+input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-soft);outline:none}
+
+/* 分段控制項 */
+.seg{border-radius:4px;background:var(--surface2);padding:3px;gap:2px}
+.seg button{border-radius:3px}
+.seg button.on{background:var(--surface);box-shadow:none;border:1px solid var(--line)}
+
+/* 卡片與照片：小圓角、細線 */
+.card,.model-item,.thumb,.anglecell,.anglegroup,.tryon-preview .pv,.main-photo,.progress{border-radius:4px}
+.card{background:var(--surface)}
+.card .bd{padding:12px}
+.card.wcard .ph{padding:0 10px}
+.thumb{padding:6px 8px}
+.tryon-preview .pv.base{box-shadow:none}
+.tryon-preview .pv .tag{border-bottom-right-radius:3px}
+.main-photo{margin:10px 0}
+.empty{border-radius:4px;border-color:var(--line)}
+.model-item{background:var(--surface);padding:14px 16px}
+.model-item.active{border-color:var(--accent);box-shadow:none;outline:1px solid var(--accent);outline-offset:1px}
+.recent .rchip{border-radius:3px}
+.rchip img{border-radius:2px}
+.badge{border-radius:2px;letter-spacing:.02em}
+.verline{letter-spacing:.06em}
+
+/* 模型頁／設定頁的群組小標：像雜誌欄目 */
+#page-models h3,#page-settings h3{font-family:"PingFang TC","Noto Sans TC",sans-serif !important;font-size:.8rem;font-weight:700;letter-spacing:.09em;color:var(--ink2);margin:2px 0 8px}
+
+/* 底部 Tab */
+.tabbar{background:rgba(247,243,236,.88);border-top:1px solid var(--line)}
+.tabbar .tab{letter-spacing:.02em}
+.tabbar .tab svg{width:23px;height:23px;stroke-width:1.6}
+.tabbar .tab.on{color:var(--accent)}
+
+/* 分頁切換：一次短促的進場 */
+@media (prefers-reduced-motion:no-preference){
+  .page.on{animation:pagein .18s ease-out both}
+}
+@keyframes pagein{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+
+@media (prefers-color-scheme: dark){
+  .topnav{background:rgba(20,17,16,.9)}
+  .tabbar{background:rgba(20,17,16,.88)}
+}
+/* 版面細節：第一個元素不要多出段距；穿衣間預覽標題用襯線；最近照片的卷軸收細 */
+section.block > :first-child{margin-top:0}
+#secTryon > h3{font-family:"Noto Serif TC",serif !important;font-size:1.15rem;font-weight:700;margin-top:20px}
+#recentBase,#recentWardrobe{scrollbar-width:thin;scrollbar-color:var(--line) transparent}
+#recentBase::-webkit-scrollbar,#recentWardrobe::-webkit-scrollbar{height:4px}
+#recentBase::-webkit-scrollbar-thumb,#recentWardrobe::-webkit-scrollbar-thumb{background:var(--line);border-radius:999px}
+#recentBase::-webkit-scrollbar-track,#recentWardrobe::-webkit-scrollbar-track{background:transparent}
+
+@media (max-width:560px){
+  .page-head{padding-top:18px}
+  section.block{padding:20px 0 4px}
+  .sec-head h2{font-size:1.22rem}
+}
 </style>
 <script>
 /* 這段要比頁面內容更早跑：只要使用者設過密碼，就先把解鎖畫面掛上，
