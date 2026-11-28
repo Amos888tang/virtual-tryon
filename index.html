@@ -203,6 +203,12 @@ body{padding-bottom:70px}
   .tabbar{background:rgba(40,33,29,.84)}
 }
 
+/* API模型：新增模型表單分成 1～5 步 */
+.mstep{margin:0 0 22px}
+.mstep + .mstep{border-top:1px solid var(--line);padding-top:16px}
+.mstep .step{margin:0 0 10px}
+.mstep .form-grid{margin-top:2px}
+
 /* ============ V2 穿衣間三步 / 最近快捷 / 開關 ============ */
 .step{display:flex;align-items:center;gap:10px;margin:2px 0 8px}
 .step-num{width:26px;height:26px;border-radius:50%;background:var(--accent);color:var(--accent-ink);
@@ -898,38 +904,67 @@ section.block > :first-child{margin-top:0}
       <p class="small" id="editBannerText"></p>
     </div>
 
-    <div class="form-grid">
-      <div><label class="fl" for="mVendor">廠商</label><select id="mVendor"></select></div>
-      <div>
-        <label class="fl" for="mModel">模型（一般畫質）</label>
-        <select id="mModel"></select>
-        <input type="text" id="mModelText" aria-label="自訂模型名稱" placeholder="輸入模型名稱" style="display:none;margin-top:6px" />
-        <div id="mHighWrap" style="margin-top:10px">
-          <label class="fl" for="mModelH" style="margin-top:0">模型（高畫質）</label>
-          <select id="mModelH"></select>
-          <p class="kv" style="margin:4px 0 0">留空就自動找名稱有 9B 的模型；選了會用同一組金鑰一起存成高畫質模型。</p>
+    <div class="mstep">
+      <div class="step"><span class="step-num">1</span><h3 class="step-title">選取廠商</h3></div>
+      <div class="form-grid">
+        <div><label class="fl" for="mVendor">廠商</label><select id="mVendor"></select></div>
+        <div id="mCustomVendorWrap" style="display:none"><label class="fl" for="mCustomVendor">自訂廠商名稱</label><input type="text" id="mCustomVendor" placeholder="例：我的中轉站" /></div>
+      </div>
+    </div>
+
+    <div class="mstep">
+      <div class="step"><span class="step-num">2</span><h3 class="step-title">輸入 API KEY 與接口地址</h3></div>
+      <div class="form-grid">
+        <div><label class="fl" for="mKey">API KEY</label><input type="password" id="mKey" autocomplete="off" placeholder="貼上你的 API KEY" /></div>
+        <div class="full"><label class="fl" for="mEndpoint">接口地址（依選的模型自動帶入，可手動改）</label><input type="url" id="mEndpoint" /></div>
+        <div id="mAccountWrap" style="display:none"><label class="fl" for="mAccount">Cloudflare Account ID</label><input type="text" id="mAccount" placeholder="Cloudflare 帳號 ID" /></div>
+        <div class="full" id="mWorkerWrap" style="display:none">
+          <label class="fl" for="mWorker">Worker 代理位址（Cloudflare 建議填，不填會失敗）</label>
+          <input type="url" id="mWorker" placeholder="https://你的worker.你的帳號.workers.dev/" />
+          <p class="kv" style="margin:4px 0 0">Cloudflare 的 API 不接受瀏覽器直接呼叫（跨域被擋），要透過你自己部署的 Worker 轉一手。留空就是直接呼叫，會出現 Failed to fetch。</p>
         </div>
       </div>
-      <div class="full" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
-        <button class="btn small" id="mRefreshBtn">重新整理模型清單</button>
+    </div>
+
+    <div class="mstep">
+      <div class="step"><span class="step-num">3</span><h3 class="step-title">取得模型清單</h3></div>
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+        <button class="btn small" id="mRefreshBtn">取得模型清單</button>
         <span class="kv" id="mListNote"></span>
       </div>
-      <div class="full"><p class="kv" id="mModelInfo" style="margin:2px 0 0"></p></div>
-      <div class="full"><label class="fl" for="mEndpoint">接口地址（依模型自動帶入，可手動改）</label><input type="url" id="mEndpoint" /></div>
-      <div id="mAccountWrap" style="display:none"><label class="fl" for="mAccount">Cloudflare Account ID</label><input type="text" id="mAccount" placeholder="Cloudflare 帳號 ID" /></div>
-      <div class="full" id="mWorkerWrap" style="display:none">
-        <label class="fl" for="mWorker">Worker 代理位址（Cloudflare 建議填，不填會失敗）</label>
-        <input type="url" id="mWorker" placeholder="https://你的worker.你的帳號.workers.dev/" />
-        <p class="kv" style="margin:4px 0 0">Cloudflare 的 API 不接受瀏覽器直接呼叫（跨域被擋），要透過你自己部署的 Worker 轉一手。留空就是直接呼叫，會出現 Failed to fetch。</p>
+      <p class="kv" style="margin:6px 0 0">貼好 API KEY 之後按上面這顆，向廠商要最新的模型清單；下面的模型欄位會跟著更新。</p>
+    </div>
+
+    <div class="mstep">
+      <div class="step"><span class="step-num">4</span><h3 class="step-title">設定一般模型及高畫質模型</h3></div>
+      <div class="form-grid">
+        <div>
+          <label class="fl" for="mModel">模型（一般畫質）</label>
+          <select id="mModel"></select>
+          <input type="text" id="mModelText" aria-label="自訂模型名稱" placeholder="輸入模型名稱" style="display:none;margin-top:6px" />
+        </div>
+        <div id="mHighWrap">
+          <label class="fl" for="mModelH">模型（高畫質）</label>
+          <select id="mModelH"></select>
+          <p class="kv" style="margin:4px 0 0">必選一組；會用同一組金鑰一起存成高畫質模型，畫質切換在「穿衣間」做。</p>
+        </div>
+        <div class="full"><p class="kv" id="mModelInfo" style="margin:2px 0 0"></p></div>
       </div>
-      <div><label class="fl" for="mKey">API KEY</label><input type="password" id="mKey" autocomplete="off" placeholder="貼上你的 API KEY" /></div>
-      <div id="mCustomVendorWrap" style="display:none"><label class="fl" for="mCustomVendor">自訂廠商名稱</label><input type="text" id="mCustomVendor" placeholder="例：我的中轉站" /></div>
     </div>
-    <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
-      <button class="btn primary" id="mSaveBtn">儲存這組模型</button>
-      <button class="btn ghost" id="mCancelEditBtn" style="display:none">取消編輯</button>
+
+    <div class="mstep">
+      <div class="step"><span class="step-num">5</span><h3 class="step-title">儲存</h3></div>
+      <h4 style="margin:4px 0 6px;font-size:1rem">測試連線</h4>
+      <p class="kv">先測一次連線：分辨「網路根本連不到」和「瀏覽器跨域被擋」這兩種完全不同的失敗，再對表單上的接口位址發一次假金鑰的請求（不會產生費用）。測試正常再按下面的「儲存」。</p>
+      <div style="margin-top:8px"><button class="btn" id="diagBtn">測試連線</button></div>
+      <pre id="diagOut" class="mono" style="display:none;white-space:pre-wrap;background:var(--surface2);border:1px solid var(--line);border-radius:9px;padding:10px;margin-top:10px;line-height:1.6"></pre>
+      <p class="kv" id="mFlowHint" style="margin:10px 0 8px">一般畫質與高畫質模型都選好之後，儲存按鈕才會亮起。<strong id="mFlowState"></strong></p>
+      <div style="display:flex;gap:8px;margin-top:4px;flex-wrap:wrap">
+        <button class="btn primary" id="mSaveBtn">儲存</button>
+        <button class="btn ghost" id="mCancelEditBtn" style="display:none">取消編輯</button>
+      </div>
+      <p id="mFormMsg" class="kv" style="min-height:1.3em"></p>
     </div>
-    <p id="mFormMsg" class="kv" style="min-height:1.3em"></p>
     </div>
 
     <div id="modelListView">
@@ -938,12 +973,6 @@ section.block > :first-child{margin-top:0}
     <div id="modelList"></div>
     <div class="empty" id="modelEmpty">還沒存任何模型。按上面的「新增模型」開始——選廠商、挑模型、貼 API KEY；存好第一組之後會請你設定解鎖密碼。</div>
     </div>
-
-    <hr class="sep" />
-    <h3 style="margin:0 0 6px;font-family:'Noto Serif TC',serif">測試連線</h3>
-    <p class="kv">用「使用中的模型」實測一次：先分辨「網路根本連不到」和「瀏覽器跨域被擋」這兩種完全不同的失敗，再對真正的接口位址發一次假金鑰的請求（不會產生費用）。改完模型、或生成失敗想確認是哪一段出問題時用。</p>
-    <div style="margin-top:8px"><button class="btn" id="diagBtn">測試使用中的模型連線</button></div>
-    <pre id="diagOut" class="mono" style="display:none;white-space:pre-wrap;background:var(--surface2);border:1px solid var(--line);border-radius:9px;padding:10px;margin-top:10px;line-height:1.6"></pre>
   </section>
 
   <!-- 6. 備份與匯入 -->
@@ -1410,6 +1439,39 @@ function qualityRoleOf(m){
   if(h && h.id===m.id) return "high";
   return "";
 }
+/* 編輯「一般畫質模型」之後，同一廠商只能留一組一般／高畫質：
+   被換掉的舊高畫質（以及編輯時改廠商前那個舊廠商的整組）直接從清單移除，不保留。 */
+function pruneReplacedQuality(rec, highRec, editing){
+  var stale=[];
+  if(!editing){
+    /* 新增同廠商的新模型：舊的一般／高畫質整組直接被新的覆蓋掉，不保留 */
+    var on0=qualityChoiceFor(rec.vendor, false), oh0=qualityChoiceFor(rec.vendor, true);
+    if(on0) stale.push(on0.id);
+    if(oh0) stale.push(oh0.id);
+  } else {
+    var n0=qualityChoiceFor(editing.vendor, false);
+    var wasNormal=(n0 && n0.id===editing.id) || (editing.id===state.activeModelId);
+    if(!wasNormal) return;
+    /* 只有「這次真的指定了另一組高畫質」才移除舊的；留空維持原本的高畫質對應 */
+    var oh=qualityChoiceFor(rec.vendor, true);
+    if(oh && highRec && highRec.id!==oh.id) stale.push(oh.id);
+    if(editing.vendor!==rec.vendor){
+      var pn=qualityChoiceFor(editing.vendor, false), ph=qualityChoiceFor(editing.vendor, true);
+      if(pn) stale.push(pn.id);
+      if(ph) stale.push(ph.id);
+    }
+  }
+  if(!stale.length) return;
+  var keep=[rec.id, highRec?highRec.id:null];
+  var removedActive=stale.indexOf(state.activeModelId)>=0;
+  state.models=state.models.filter(function(x){
+    if(keep.indexOf(x.id)>=0) return true;
+    return stale.indexOf(x.id)<0;
+  });
+  if(removedActive){
+    state.activeModelId=state.models.some(function(x){return x.id===rec.id;})?rec.id:(state.models.length?state.models[0].id:null);
+  }
+}
 function defaultQualityModel(high){
   var vend=qualityVendor();
   var pool=state.models.filter(function(m){ return modelCanTryOn(m) && (!vend || m.vendor===vend); });
@@ -1724,6 +1786,13 @@ async function refreshModelList(){
   var v=$("mVendor").value;
   if(v==="custom"){ toast("自訂廠商沒有清單可查。"); return; }
   var saved=state.models.filter(function(m){ return m.vendor===v; });
+  var typedKey=$("mKey").value.trim();
+  var savedKey=(saved.filter(function(m){ return m.apiKey; })[0]||{}).apiKey||"";
+  if(!typedKey && !savedKey && v!=="openrouter" && v!=="pollinations"){
+    toast("請先在「2. 輸入 API KEY」貼上金鑰，再按「取得模型清單」。");
+    try{ $("mKey").focus(); }catch(e){}
+    return;
+  }
   var key=$("mKey").value.trim() || (saved[0]&&saved[0].apiKey) || "";
   var acct=$("mAccount").value.trim() || ((saved.filter(function(m){return m.accountId;})[0]||{}).accountId||"");
   var worker=$("mWorker").value.trim() || ((saved.filter(function(m){return m.workerUrl;})[0]||{}).workerUrl||"");
@@ -1743,6 +1812,35 @@ async function refreshModelList(){
   }
 }
 $("mRefreshBtn").addEventListener("click", refreshModelList);
+
+/* 新增／編輯模型表單：一般畫質與高畫質都要選好才能按儲存；新增時也要先有 API KEY。
+   設定精靈借用這張表單存檔時（suSavingForm）不受限制，維持原本自動找 9B 的行為。 */
+var suSavingForm=false;
+function modelFormMissing(){
+  if(suSavingForm) return [];
+  var v=$("mVendor")?$("mVendor").value:"";
+  var miss=[], key=$("mKey")?$("mKey").value.trim():"";
+  if(!key && !editingModelId) miss.push("API KEY");
+  if(v==="custom"){
+    if(!$("mModelText").value.trim()) miss.push("模型名稱");
+    if(!$("mEndpoint").value.trim()) miss.push("接口地址");
+    return miss;
+  }
+  if(!$("mModel").value) miss.push("一般畫質模型");
+  if($("mModelH") && !$("mModelH").value) miss.push("高畫質模型");
+  if(v==="replicate" && $("mModel").value==="__custom__" && !$("mModelText").value.trim()) miss.push("模型名稱");
+  return miss;
+}
+function refreshModelSaveState(){
+  var miss=modelFormMissing();
+  if($("mSaveBtn")) $("mSaveBtn").disabled=miss.length>0;
+  if($("mFlowState")) $("mFlowState").textContent=miss.length?("目前還缺："+miss.join("、")+"。"):"都填好了，可以儲存。";
+}
+["mVendor","mModel","mModelH","mKey","mModelText","mEndpoint"].forEach(function(id){
+  var el=$(id); if(!el) return;
+  el.addEventListener("input", refreshModelSaveState);
+  el.addEventListener("change", refreshModelSaveState);
+});
 
 /* ============ 模型設定表單 ============ */
 function fillVendorSelect(){
@@ -1769,6 +1867,7 @@ function fillModelSelect(){
     $("mModelInfo").textContent="自訂廠商：自己填模型名稱與接口地址。生成時會用 OpenAI 相容的 /images/edits 方式呼叫（multipart，Authorization: Bearer）。";
     $("mListNote").textContent="自訂廠商沒有清單可查。";
     $("mRefreshBtn").disabled=true;
+    refreshModelSaveState();
     return;
   }
   $("mRefreshBtn").disabled=false;
@@ -1807,6 +1906,7 @@ function fillModelSelect(){
   if(needText) $("mModelText").placeholder="例：black-forest-labs/flux-kontext-pro 或 cuuupid/idm-vton:abc123…";
   updateListNote(v);
   onModelChange();
+  refreshModelSaveState();
 }
 function updateListNote(v){
   var c=MODEL_CACHE[v];
@@ -1877,15 +1977,17 @@ function startEditModel(id){
   renderModels();
   setModelSub("add");
   $("editBanner").scrollIntoView({behavior:"smooth",block:"center"});
+  refreshModelSaveState();
   toast("已進入編輯模式，改完按「儲存變更」。");
 }
 function endEditModel(){
   editingModelId=null;
   $("mKey").value="";
   $("mKey").placeholder="貼上你的 API KEY";
-  $("mSaveBtn").textContent="儲存這組模型";
+  $("mSaveBtn").textContent="儲存";
   $("mCancelEditBtn").style.display="none";
   $("editBanner").style.display="none";
+  refreshModelSaveState();
 }
 $("mCancelEditBtn").addEventListener("click", function(){
   endEditModel();
@@ -1893,6 +1995,12 @@ $("mCancelEditBtn").addEventListener("click", function(){
   $("mFormMsg").textContent="已取消編輯，表單沒有變更。";
 });
 $("mSaveBtn").addEventListener("click", async function(){
+  var miss=modelFormMissing();
+  if(miss.length){
+    refreshModelSaveState();
+    $("mFormMsg").innerHTML="<span class='err-text'>請先完成上面的步驟（還缺："+esc(miss.join("、"))+"）。</span>";
+    return;
+  }
   var v=$("mVendor").value;
   var editing=editingModelId?modelOf(editingModelId):null;
   var key=$("mKey").value.trim();
@@ -1950,6 +2058,7 @@ $("mSaveBtn").addEventListener("click", async function(){
     if(!state.activeModelId) state.activeModelId=rec.id;
   }
   if(highRec && highRec!==rec && !state.models.some(function(x){ return x.id===highRec.id; })) state.models.push(highRec);
+  pruneReplacedQuality(rec, highRec, editing);
   saveQualityChoices(rec.id, highRec?highRec.id:undefined);
   saveModels();
   endEditModel();
@@ -1992,7 +2101,7 @@ function renderModels(){
       "<div class='kv'>API KEY："+(m.apiKey?esc(maskKey(m.apiKey)):"<span class='err-text'>（未設定）</span>")+"　"+((m.keyEnc&&!m.apiKey)?"<span class='badge no'>需重貼金鑰</span>":(m.keyEnc?"<span class='badge on'>已加密儲存</span>":"<span class='badge no'>明碼儲存</span>"))+"</div>"+
       (m.keyEnc?"":"<div class='kv warn-text'>這組金鑰是明碼存在瀏覽器裡。設定解鎖密碼之後，金鑰會自動改成密文儲存。</div>")+
       "<div style='display:flex;gap:8px;margin-top:8px;flex-wrap:wrap'>"+
-      "<button class='btn small' data-act='edit'"+(m.id===editingModelId?" disabled":"")+">"+(m.id===editingModelId?"編輯中":"編輯")+"</button>"+
+      ((role==="high")?"":"<button class='btn small' data-act='edit'"+(m.id===editingModelId?" disabled":"")+">"+(m.id===editingModelId?"編輯中":"編輯")+"</button>")+
       ((m.id===state.activeModelId||role==="high")?"":"<button class='btn small' data-act='use'>設為使用中</button>")+
       "<button class='btn small danger' data-act='del'>刪除這組</button></div>";
     div.querySelectorAll("button").forEach(function(b){
@@ -2903,11 +3012,27 @@ function diagProbe(url, opts){
   });
 }
 function diagFmt(r){ return r.ok?("OK（HTTP "+r.status+"，"+(r.ms/1000).toFixed(1)+" 秒）"):("失敗："+r.err+"（"+(r.ms/1000).toFixed(1)+" 秒）"); }
+/* 測試連線：在「新增模型」表單裡測表單目前的設定，其他情況測使用中的模型 */
+function diagTargetModel(){
+  var addShown=$("modelAddView") && $("modelAddView").style.display!=="none";
+  if(addShown && $("mEndpoint") && $("mEndpoint").value.trim()){
+    var v=$("mVendor").value;
+    var meta=(v!=="custom")?currentFormModelMeta():null;
+    return {
+      vendor:v, customVendor:$("mCustomVendor").value.trim(),
+      modelId:(meta&&meta.id)||(v==="custom"?"":$("mModel").value),
+      modelName:(meta&&meta.name)||$("mModelText").value.trim()||$("mModel").value||"（表單裡的模型）",
+      endpoint:$("mEndpoint").value.trim(), accountId:$("mAccount").value.trim(),
+      workerUrl:$("mWorker").value.trim(), apiKey:$("mKey").value.trim(), _fromForm:true
+    };
+  }
+  return activeModel();
+}
 $("diagBtn").addEventListener("click", async function(){
-  var out=$("diagOut"), m=activeModel();
+  var out=$("diagOut"), m=diagTargetModel();
   out.style.display="block";
   var head="頁面來源（Origin）："+location.origin+"\n"+
-    "使用中的模型："+(m?(vendorLabel(m)+"・"+m.modelName):"（沒有）")+"\n";
+    (m&&m._fromForm?"表單目前的設定：":"使用中的模型：")+(m?(vendorLabel(m)+"・"+m.modelName):"（沒有）")+"\n";
   out.textContent=head+"\n測試中…（每項最多等 8 秒）";
   var hosts=[
     { label:"Cloudflare", url:"https://api.cloudflare.com/client/v4/" },
@@ -2940,6 +3065,7 @@ $("diagBtn").addEventListener("click", async function(){
     lines.push("");
     out.textContent=lines.join("\n")+"\n測試中…";
   }
+  var epOK=false;
   if(m&&m.endpoint){
     var auth=(m.vendor==="fal")?{Authorization:"Key probe"}:{Authorization:"Bearer probe"};
     var fd=new FormData(); fd.append("prompt","probe");
@@ -2948,6 +3074,7 @@ $("diagBtn").addEventListener("click", async function(){
       probeUrl=normUrl(m.workerUrl)+"/?account="+encodeURIComponent(m.accountId||"")+"&model="+encodeURIComponent(m.modelId||"");
     }
     var ep=await diagProbe(probeUrl,{method:"POST",headers:auth,body:fd});
+    epOK=!!ep.ok;
     lines.push("── 實際接口探測（故意用假金鑰，不會產生費用）");
     lines.push("   "+(probeUrl!==m.endpoint?("經 Worker 代理："+probeUrl):probeUrl));
     lines.push("   "+(ep.ok?("有回應（HTTP "+ep.status+"），代表網址和跨域都通，換上真金鑰就會成功"):("失敗："+ep.err)));
@@ -2961,6 +3088,10 @@ $("diagBtn").addEventListener("click", async function(){
   lines.push(verdict);
   lines.push("（把這段文字截圖給我就可以判斷）");
   out.textContent=lines.join("\n");
+  if(epOK){
+    toast("測試連線正常，可以按「儲存」。");
+    try{ var sb=$("mSaveBtn"); if(sb && $("modelAddView") && $("modelAddView").style.display!=="none") sb.scrollIntoView({block:"center"}); }catch(e){}
+  }
 });
 
 /* ============ 多角度 ============ */
@@ -3878,6 +4009,7 @@ function resetModelForm(){
   $("mKey").value="";
   $("mModelText").value="";
   $("mFormMsg").textContent="";
+  refreshModelSaveState();
 }
 function bindNav(){
   document.querySelectorAll(".tnav,.tab").forEach(function(b){
@@ -4524,7 +4656,7 @@ $("packPwOk").addEventListener("click", async function(){
 
 /* ============ 第一次使用的設定精靈 ============ */
 /* 全新裝置（沒有任何模型、也還沒設密碼）開頁就擋在這裡，設完才能用。
-   實際存檔仍走第 5 節那套表單與「儲存這組模型」，不另外寫一份驗證與加密流程。 */
+   實際存檔仍走第 5 節那套表單與「儲存」，不另外寫一份驗證與加密流程。 */
 function setupNeeded(){ return !state.models.length; }
 function suWait(ms){ return new Promise(function(r){ setTimeout(r,ms); }); }
 function openSetup(){
@@ -4602,7 +4734,7 @@ $("suGoBtn").addEventListener("click", async function(){
     if(pw!==pw2){ $("suErr").textContent="兩次輸入的密碼不一樣，請再確認。"; return; }
   }
 
-  /* 把值倒進第 5 節的表單，按它原本的「儲存這組模型」 */
+  /* 把值倒進第 5 節的表單，按它原本的「儲存」 */
   $("mVendor").value=v;
   $("mKey").value=key;
   $("mAccount").value=$("suAccount").value.trim();
@@ -4612,14 +4744,16 @@ $("suGoBtn").addEventListener("click", async function(){
   else $("mModel").value=$("suModel").value;
   onModelChange();
 
-  var before=state.models.length;
   $("mFormMsg").textContent="";
+  suSavingForm=true;   /* 精靈只有 4 個欄位，高畫質交給「自動找 9B」 */
+  refreshModelSaveState();   /* 先把「儲存」解鎖，不然停用的按鈕點了沒反應 */
   $("mSaveBtn").click();
-  for(var i=0;i<80 && state.models.length<=before;i++){
-    if($("mFormMsg").textContent.trim()) break;
-    await suWait(50);
-  }
-  if(state.models.length<=before){
+  /* 同一廠商會被覆蓋，模型數量不一定變多，所以看存檔訊息而不是看數量 */
+  var savedRe=/已儲存|已更新/;
+  for(var i=0;i<80 && !savedRe.test($("mFormMsg").textContent);i++){ await suWait(50); }
+  suSavingForm=false;
+  refreshModelSaveState();
+  if(!savedRe.test($("mFormMsg").textContent)){
     $("suErr").textContent="存不起來："+($("mFormMsg").textContent.trim()||"請檢查上面填的內容。");
     return;
   }
