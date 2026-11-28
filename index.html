@@ -841,10 +841,16 @@ section.block > :first-child{margin-top:0}
 
   <!-- 4. 多角度 -->
   <section class="block" id="secAngles">
-    <div class="sec-head"><h2>多角度生成</h2><span class="hint">勾選 1~4 張人物照片當基準，一次合成 3 組 × 四個角度（正面／左側／右側／後面）。點任一組的任一張就整組套用；失敗的角度可單獨重試。</span></div>
+    <div class="sec-head"><h2>多角度生成</h2><span class="hint">勾選 1~4 張人物照片當基準，一次合成 3 組 × 四個角度（正面／左側／右側／後面）。點任一組的任一張就整組套用；失敗的角度可單獨重試。已經有做好的多角度拼圖，也可以直接上傳當底圖。</span></div>
     <p class="kv" id="angleRefHint" style="margin:2px 0 6px">按「載入底圖」帶入人物照片，再勾選 1~4 張當基準：</p>
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin:0 0 8px">
       <button class="btn small" id="angleLoadBtn">載入底圖</button>
+      <input type="file" id="angleOwnFile" accept="image/*" hidden multiple />
+      <label class="btn small" for="angleOwnFile">上傳自己的多角度底圖</label>
+    </div>
+    <div id="angleOwnBox" style="display:none;margin:0 0 10px">
+      <p class="kv" id="angleOwnMsg" style="margin:0 0 6px"></p>
+      <div class="main-photo" style="max-width:240px;aspect-ratio:3/4;margin:6px 0"><img id="angleOwnImg" alt="剛上傳的多角度底圖" /></div>
     </div>
     <div class="grid photos" id="angleRefGrid"></div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
@@ -2079,6 +2085,32 @@ $("photoReplaceFile").addEventListener("change", async function(){
   sel.fp=await dataUrlFingerprint(sel.dataUrl);
   await idbPut("photos",sel); renderPhotos(); renderTryonSummary();
 });
+/* 多角度生成頁：直接上傳自己做好（或別處生成）的多角度拼圖，不必再生成 */
+$("angleOwnFile").addEventListener("change", async function(){
+  var files=Array.prototype.slice.call(this.files||[]); this.value="";
+  if(!files.length) return;
+  var last=null, added=0;
+  for(var i=0;i<files.length;i++){
+    try{
+      var d=await fileToDataUrl(files[i],1600);
+      var rec={id:uid(), dataUrl:d, createdAt:Date.now(), fp:await dataUrlFingerprint(d)};
+      /* 使用者自己上傳的一定是多角度底圖：直接標記，試穿時四個角度都會換衣服 */
+      rec.mvDetected=true; rec.mvChecked=true; rec.multiView=true;
+      await idbPut("photos",rec); state.photos.push(rec);
+      state.selectedPhotoId=rec.id; state.activeAngleGroupId=null;
+      last=rec; added++;
+    }catch(e){ }
+  }
+  if(added){
+    $("angleOwnBox").style.display="block";
+    $("angleOwnImg").src=last.dataUrl;
+    $("angleOwnMsg").textContent="已加入 "+added+" 張，並設為目前的底圖（已標記 4 視角）。到「穿衣間」就能直接試穿。";
+    renderPhotos(); renderTryonSummary();
+    toast("已加入 "+added+" 張多角度底圖");
+  } else {
+    toast("照片讀不到，換一張試試。");
+  }
+});
 $("photoDeleteBtn").addEventListener("click", async function(){
   var sel=selectedPhoto(); if(!sel){ toast("目前沒有選定的照片。"); return; }
   await trashItem("photos",sel.id);
@@ -2649,7 +2681,7 @@ function renderTryonSummary(){
   $("tryonModelName").textContent=m?(vendorLabel(m)+"・"+m.modelName):"（尚未設定）";
   $("tryonModelPrice").textContent=m?("・"+(modelPrice(m)||"")):"";
   if(!base && !items.length) $("tryonSummary").textContent="尚未選底圖與衣服。";
-  else $("tryonSummary").textContent="底圖："+(base?base.label:"（未選）")+"｜衣服："+(items.length?items.map(function(w){return w.name;}).join("、"):"（未選）");
+  else $("tryonSummary").textContent="底圖："+(base?(base.multiView?"4 視角底圖":base.label):"（未選）")+"｜衣服："+(items.length?items.map(function(w){return w.name;}).join("、"):"（未選）");
   fillRefSelect();
   renderTryonPreview(base, items);
   renderResults();
