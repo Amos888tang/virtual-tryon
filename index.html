@@ -76,7 +76,7 @@ label.fl{display:block;font-size:.9rem;color:var(--ink2);margin:10px 0 4px}
 .tryon-preview .pv.base{width:104px;border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-soft)}
 .tryon-preview .pv.ref{width:104px;border-style:dashed}
 .tryon-preview .pv.ref .tag{background:var(--ink2);color:var(--bg)}
-.tryon-preview .pv img{width:100%;aspect-ratio:3/4;object-fit:cover;display:block}
+.tryon-preview .pv img{width:100%;aspect-ratio:3/4;object-fit:contain;display:block}
 .tryon-preview .pv .tag{position:absolute;left:0;top:0;background:var(--accent);color:var(--accent-ink);font-size:.72rem;padding:2px 7px;border-bottom-right-radius:8px}
 .tryon-preview .pv .cap{font-size:.78rem;padding:4px 6px;color:var(--ink2);word-break:break-all;line-height:1.3;min-height:2.9em;flex:1 1 auto}
 .tryon-preview .pv .rm{position:absolute;right:3px;top:3px;width:1.5rem;height:1.5rem;border-radius:50%;border:1px solid var(--line);background:var(--surface);color:var(--err);font-size:.8rem;line-height:1;padding:0;min-height:0}
@@ -88,6 +88,11 @@ label.fl{display:block;font-size:.9rem;color:var(--ink2);margin:10px 0 4px}
 .badge{display:inline-block;background:var(--chip);border-radius:999px;padding:1px 9px;font-size:.78rem;color:var(--ink2);margin-right:4px}
 .badge.on{background:var(--accent);color:var(--accent-ink)}
 .badge.no{background:var(--accent-soft);color:var(--err)}
+/* 模型卡片上的畫質角色（圓角框） */
+.qbadges{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 6px}
+.badge.qbadge{border:1px solid var(--line);border-radius:999px;padding:2px 10px;font-size:.74rem;background:transparent}
+.badge.qbadge.qn{color:var(--accent);border-color:var(--accent);background:var(--accent-soft)}
+.badge.qbadge.qh{color:var(--ink2);border-color:var(--ink2)}
 .main-photo{background:var(--surface2);border:1px solid var(--line);border-radius:12px;aspect-ratio:4/3;display:flex;align-items:center;justify-content:center;overflow:hidden;margin:10px 0}
 .main-photo img{width:100%;height:100%;object-fit:contain}
 .empty{border:1.5px dashed var(--line);border-radius:12px;padding:26px 16px;text-align:center;color:var(--ink2)}
@@ -207,7 +212,7 @@ body{padding-bottom:70px}
 .recent{display:flex;gap:10px;overflow-x:auto;padding:2px 2px 10px;-webkit-overflow-scrolling:touch}
 .rchip{flex:0 0 auto;display:flex;flex-direction:column;align-items:center;gap:4px;background:var(--card);
   border:1px solid var(--line);border-radius:12px;padding:8px;width:80px;cursor:pointer;font-family:inherit}
-.rchip img{width:56px;height:72px;object-fit:cover;border-radius:8px;background:var(--surface2)}
+.rchip img{width:56px;height:72px;object-fit:contain;border-radius:8px;background:var(--surface2)}
 .rchip span{font-size:11px;color:var(--ink);max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .rchip.on{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-soft)}
 
@@ -277,7 +282,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 @media(min-width:1024px){
   #page-fitting .recent{gap:10px;padding-bottom:8px}
   #page-fitting .rchip{width:226px;padding:8px}
-  #page-fitting .rchip img{width:100%;height:auto;aspect-ratio:3/4;object-fit:cover;border-radius:10px}
+  #page-fitting .rchip img{width:100%;height:auto;aspect-ratio:3/4;object-fit:contain;border-radius:10px}
   #page-fitting .rchip span{font-size:.82rem;max-width:100%}
 }
 /* 人物底圖：寬螢幕左邊主圖、右邊照片庫 */
@@ -707,6 +712,10 @@ section.block > :first-child{margin-top:0}
     </section>
     <section class="page" id="page-models">
       <header class="page-head"><h1>API模型</h1><p class="psub">選廠商、填 API KEY；金鑰只存在這台裝置。</p></header>
+      <div class="seg" id="modelSeg">
+        <button type="button" data-sub="add" aria-pressed="false">新增模型</button>
+        <button type="button" data-sub="list" class="on" aria-pressed="true">已儲存的模型</button>
+      </div>
     </section>
     <section class="page" id="page-settings">
       <header class="page-head"><h1>設定</h1><p class="psub">帳號、同步、備份與垃圾桶。</p></header>
@@ -721,10 +730,6 @@ section.block > :first-child{margin-top:0}
   </div>
 
   <div class="notice">
-    <p><strong>先講清楚三件事：</strong></p>
-    <p class="small">1．資料只存在這台裝置的瀏覽器裡（照片存 IndexedDB、設定存 localStorage）。換瀏覽器、換裝置或清除瀏覽器資料，照片和設定就不見了，要重新上傳、重新填金鑰。原本那個 App 裡的照片、衣櫃、模型設定<strong>不會</strong>自動帶過來，這一版從空白開始。</p>
-    <p class="small">2．靜態版<strong>沒有</strong> Muse 內建生圖。生成時是瀏覽器拿你的照片和金鑰，直接去叫你選的那家廠商 API，所以要先在「API模型」頁存好至少一組模型才能生成；還沒存的話，生成按鈕會引導你先新增。</p>
-    <p class="small">3．在中國能不能連上，取決於部署網址和廠商：github.io 通常打得開，workers.dev／vercel.app 常被擋；OpenAI、Google、Meta 的 API 在中國連不上，智譜連得上但它的生圖接口只吃文字、不能拿照片試穿（見模型清單標示）。做好後請在當地實際開一次、跑一張圖確認。</p>
     <p style="margin-top:10px">
       <button class="btn" id="exportBtn"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v12M8 12l4 4 4-4"/><path d="M5 20h14"/></svg> 下載這支程式（單一 HTML 檔）</button>
       <span class="kv">下載回去就是完整程式，解壓／部署都不需要後端；放到任何靜態空間就能用。</span>
@@ -872,6 +877,7 @@ section.block > :first-child{margin-top:0}
 
   <!-- 5. 模型設定 -->
   <section class="block" id="secModels">
+    <div id="modelAddView" style="display:none">
     <div class="sec-head"><h2>新增或編輯模型</h2><span class="hint">先選廠商、再挑模型，接口地址會自動帶入預設值（可以手動改），填 API KEY 按儲存就好。金鑰只存在你的瀏覽器，畫面上只顯示星號加末四碼。</span></div>
 
     <div id="pwSetupBox" style="display:none">
@@ -924,11 +930,14 @@ section.block > :first-child{margin-top:0}
       <button class="btn ghost" id="mCancelEditBtn" style="display:none">取消編輯</button>
     </div>
     <p id="mFormMsg" class="kv" style="min-height:1.3em"></p>
+    </div>
 
+    <div id="modelListView">
     <hr class="sep" />
     <h3 style="margin:0 0 4px;font-family:'Noto Serif TC',serif">已儲存的模型</h3>
     <div id="modelList"></div>
-    <div class="empty" id="modelEmpty">還沒存任何模型。先在上面選廠商、挑模型、貼 API KEY 按儲存——存好第一組之後會請你設定解鎖密碼。</div>
+    <div class="empty" id="modelEmpty">還沒存任何模型。按上面的「新增模型」開始——選廠商、挑模型、貼 API KEY；存好第一組之後會請你設定解鎖密碼。</div>
+    </div>
 
     <hr class="sep" />
     <h3 style="margin:0 0 6px;font-family:'Noto Serif TC',serif">測試連線</h3>
@@ -1371,6 +1380,35 @@ function qualityChoice(high){
   if(!pair) return null;
   var m=modelOf(high?pair.high:pair.normal);
   return (m && (!vend || m.vendor===vend))?m:null;
+}
+/* 指定廠商的畫質對應（不借其他廠商的模型） */
+function qualityChoiceFor(vendor, high){
+  var map=readQualityMap(), u=map[state.userId||"guest"]||{};
+  var id=high?u.high:u.normal;
+  var m=id?modelOf(id):null;
+  if(m && m.vendor===vendor) return m;
+  var pair=((u.byVendor||{})[vendor])||null;
+  if(!pair) return null;
+  var mm=modelOf(high?pair.high:pair.normal);
+  return (mm && mm.vendor===vendor)?mm:null;
+}
+/* 某個模型所屬廠商的高畫質模型 */
+function qualityHighOf(m){
+  if(!m) return null;
+  var h=qualityChoiceFor(m.vendor, true);
+  if(!h && m.vendor===qualityVendor()) h=defaultQualityModel(true);
+  return (h && h.vendor===m.vendor && h.id!==m.id)?h:null;
+}
+/* 這個模型在卡片上要標「一般畫質模型」還是「高畫質模型」 */
+function qualityRoleOf(m){
+  var n=qualityChoiceFor(m.vendor, false);
+  if(!n && m.id===state.activeModelId) n=m;
+  if(n && n.id===m.id) return "normal";
+  /* 這裡要直接問「這家廠商的高畫質是哪一個」，不能用 qualityHighOf（它會排除自己） */
+  var h=qualityChoiceFor(m.vendor, true);
+  if(!h && m.vendor===qualityVendor()) h=defaultQualityModel(true);
+  if(h && h.id===m.id) return "high";
+  return "";
 }
 function defaultQualityModel(high){
   var vend=qualityVendor();
@@ -1837,6 +1875,7 @@ function startEditModel(id){
   $("editBanner").style.display="block";
   /* 卡片要重畫：剛編輯的那張會變成「編輯中」並鎖住，避免使用者以為沒反應又按一次、又被問一次密碼 */
   renderModels();
+  setModelSub("add");
   $("editBanner").scrollIntoView({behavior:"smooth",block:"center"});
   toast("已進入編輯模式，改完按「儲存變更」。");
 }
@@ -1919,16 +1958,31 @@ $("mSaveBtn").addEventListener("click", async function(){
     (highRec?"<span class='kv'>　高畫質："+esc(highRec.modelName)+"</span>":"")+
     (v==="cloudflare"&&!worker?"<span class='warn-text'>　注意：沒填 Worker 代理位址，從瀏覽器直呼 Cloudflare 會被跨域擋掉。</span>":"");
   if(!pwHash()) state.unlocked=true;
+  setModelSub("add");   /* 存檔訊息與「設定解鎖密碼」都在表單檢視裡，確保看得到 */
   renderModels(); renderTryonSummary(); refreshPwSetup(); refreshLock();
 });
 function renderModels(){
   var list=$("modelList"); list.innerHTML="";
   $("modelEmpty").style.display=state.models.length?"none":"block";
-  state.models.forEach(function(m){
+  /* 使用中的一般畫質模型，和它同廠商的高畫質模型，兩個一起放最上面；其他照原本順序排在下面 */
+  var active=modelOf(state.activeModelId);
+  var ordered=[], seen={};
+  if(active){
+    ordered.push(active); seen[active.id]=1;
+    var hi=qualityHighOf(active);
+    if(hi){ ordered.push(hi); seen[hi.id]=1; }
+  }
+  state.models.forEach(function(m){ if(!seen[m.id]) ordered.push(m); });
+  ordered.forEach(function(m){
     var div=document.createElement("div");
     div.className="model-item"+(m.id===state.activeModelId?" active":"");
     var can=modelCanTryOn(m);
-    div.innerHTML="<div><strong>"+esc(vendorLabel(m))+"・"+esc(m.modelName)+"</strong> "+
+    var role=qualityRoleOf(m);
+    var qb="";
+    if(role==="normal") qb+="<span class='badge qbadge qn'>一般畫質模型</span>";
+    if(role==="high") qb+="<span class='badge qbadge qh'>高畫質模型</span>";
+    div.innerHTML="<div>"+(qb?"<div class='qbadges'>"+qb+"</div>":"")+
+      "<strong>"+esc(vendorLabel(m))+"・"+esc(m.modelName)+"</strong> "+
       (m.id===state.activeModelId?"<span class='badge on'>使用中</span>":"")+
       (can?"":"<span class='badge no'>不能試穿</span>")+"</div>"+
       "<div class='kv'>每張價格："+esc(modelPrice(m)||"—")+"</div>"+
@@ -1939,7 +1993,7 @@ function renderModels(){
       (m.keyEnc?"":"<div class='kv warn-text'>這組金鑰是明碼存在瀏覽器裡。設定解鎖密碼之後，金鑰會自動改成密文儲存。</div>")+
       "<div style='display:flex;gap:8px;margin-top:8px;flex-wrap:wrap'>"+
       "<button class='btn small' data-act='edit'"+(m.id===editingModelId?" disabled":"")+">"+(m.id===editingModelId?"編輯中":"編輯")+"</button>"+
-      (m.id===state.activeModelId?"":"<button class='btn small' data-act='use'>設為使用中</button>")+
+      ((m.id===state.activeModelId||role==="high")?"":"<button class='btn small' data-act='use'>設為使用中</button>")+
       "<button class='btn small danger' data-act='del'>刪除這組</button></div>";
     div.querySelectorAll("button").forEach(function(b){
       b.addEventListener("click", function(){
@@ -1947,6 +2001,7 @@ function renderModels(){
         if(act==="edit"){
           /* 已經在編輯這一組：只是把畫面帶回表單，不要再問一次密碼（不然會像卡在迴圈裡） */
           if(editingModelId===m.id){
+            setModelSub("add");
             $("editBanner").scrollIntoView({behavior:"smooth",block:"center"});
             toast("這一組正在編輯中，直接改上面的表單就好。");
             return;
@@ -1954,7 +2009,9 @@ function renderModels(){
           requirePassword("修改模型「"+m.modelName+"」的設定", function(){ startEditModel(m.id); });
         } else if(act==="use"){
           requirePassword("切換使用中的模型為「"+m.modelName+"」", function(){
-            state.activeModelId=m.id; saveModels(); renderModels(); renderTryonSummary(); toast("已切換使用中的模型。");
+            /* 設為使用中＝這一組也成為該廠商的一般畫質模型（高畫質對應不動） */
+            state.activeModelId=m.id; saveQualityChoices(m.id); saveModels();
+            renderModels(); renderTryonSummary(); toast("已切換使用中的模型。");
           });
         } else {
           requirePassword("刪除模型「"+m.modelName+"」", function(){
@@ -3798,6 +3855,30 @@ function setBaseSub(name){
   if($("secPhotos")) $("secPhotos").style.display = name==="photos" ? "" : "none";
   if($("secAngles")) $("secAngles").style.display = name==="angles" ? "" : "none";
 }
+/* API模型頁：新增模型／已儲存的模型 兩個檢視 */
+function setModelSub(name){
+  var seg=$("modelSeg"); if(!seg) return;
+  seg.querySelectorAll("button").forEach(function(b){
+    var on=b.getAttribute("data-sub")===name;
+    b.classList.toggle("on", on);
+    b.setAttribute("aria-pressed", on?"true":"false");
+  });
+  if($("modelAddView")) $("modelAddView").style.display=name==="add"?"":"none";
+  if($("modelListView")) $("modelListView").style.display=name==="list"?"":"none";
+}
+/* 按「新增模型」：如果正在編輯就先取消編輯、把表單回到空白 */
+function resetModelForm(){
+  endEditModel();
+  fillVendorSelect();
+  $("mModelH").value="";
+  $("mEndpoint").value="";
+  $("mAccount").value="";
+  $("mWorker").value="";
+  $("mCustomVendor").value="";
+  $("mKey").value="";
+  $("mModelText").value="";
+  $("mFormMsg").textContent="";
+}
 function bindNav(){
   document.querySelectorAll(".tnav,.tab").forEach(function(b){
     b.addEventListener("click", function(){ switchPage(b.getAttribute("data-page")); });
@@ -3805,6 +3886,13 @@ function bindNav(){
   if($("baseSeg")) $("baseSeg").addEventListener("click", function(e){
     var b=e.target.closest ? e.target.closest("button[data-sub]") : null;
     if(b) setBaseSub(b.getAttribute("data-sub"));
+  });
+  if($("modelSeg")) $("modelSeg").addEventListener("click", function(e){
+    var b=e.target.closest ? e.target.closest("button[data-sub]") : null;
+    if(!b) return;
+    var name=b.getAttribute("data-sub");
+    if(name==="add" && editingModelId){ resetModelForm(); renderModels(); }
+    setModelSub(name);
   });
   if($("baseMoreBtn")) $("baseMoreBtn").addEventListener("click", function(){ switchPage("base"); setBaseSub("photos"); });
   if($("tryonModelLink")) $("tryonModelLink").addEventListener("click", function(){ switchPage("models"); });
