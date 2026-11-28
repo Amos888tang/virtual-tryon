@@ -419,6 +419,60 @@ section.block > :first-child{margin-top:0}
 .btn svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;flex:0 0 auto}
 /* a11y 2026-11-28：檢視器本身接焦點，不要畫外框 */
 #viewer:focus{outline:none}
+/* ============================================================
+   2026-11-28 桌面版字級放大（使用者：小字看得很吃力）
+   只放大「非標題」的小字：說明、卡片資訊、標籤、按鈕、表單標籤、
+   進度提示等；頁首大標、區塊標題（.sec-head h2）、步驟標題
+   （.step-title）維持原尺寸。手機（<720px）完全不動。
+   ============================================================ */
+@media (min-width:720px){
+  /* 頁首副標、區塊說明、提示文字 */
+  .page-head .psub{font-size:1.03rem}
+  .sec-head .hint{font-size:.98rem}
+  .notice .small{font-size:.98rem}
+  .kv{font-size:.98rem !important}
+  .statusline{font-size:1rem}
+
+  /* 導覽、分段控制、按鈕 */
+  .topnav .tnav{font-size:1.05rem}
+  .seg button{font-size:1.02rem}
+  .btn{font-size:1.02rem}
+  .btn.small{font-size:.95rem}
+  .linklike{font-size:.98rem}
+
+  /* 表單標籤 */
+  label.fl{font-size:.98rem}
+  .qlabel{font-size:1rem}
+
+  /* 卡片資訊、標籤 */
+  .card .brand{font-size:.92rem}
+  .card .meta{font-size:.96rem !important}
+  .card .modelinfo{font-size:.92rem}
+  .badge{font-size:.87rem}
+  .card.wcard .ph .pickbadge{font-size:.85rem}
+  .group-title{font-size:.98rem}
+  #page-models h3,#page-settings h3{font-size:.9rem}
+  .verline{font-size:.87rem}
+  .mono{font-size:.92rem}
+  .acctblock #whoWrap{font-size:1.02rem}
+
+  /* 試穿預覽、最近照片、多角度 */
+  .tryon-preview .pv .tag{font-size:.84rem}
+  .tryon-preview .pv .cap,
+  #page-fitting .tryon-preview .pv .cap{font-size:.9rem}
+  #page-fitting .rchip span{font-size:.92rem}
+  .anglecell .cap{font-size:.9rem}
+  .anglemiss{font-size:1rem}
+  .step-num{font-size:16px}
+
+  /* 生成進度、toast */
+  #hud{font-size:.98rem}
+  #hud .hd{font-size:.9rem}
+  #toast{font-size:1rem}
+
+  /* 檢視器底部操作說明（原本行內 .85rem） */
+  #viewer p{font-size:.95rem !important}
+}
 </style>
 <script>
 /* 這段要比頁面內容更早跑：只要使用者設過密碼，就先把解鎖畫面掛上，
