@@ -417,6 +417,8 @@ section.block > :first-child{margin-top:0}
 #viewer .vbar button svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;vertical-align:-3px;margin-right:2px}
 /* a11y 2026-11-28：.btn 內的線性圖示（匯出鈕） */
 .btn svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;flex:0 0 auto}
+/* a11y 2026-11-28：檢視器本身接焦點，不要畫外框 */
+#viewer:focus{outline:none}
 </style>
 <script>
 /* 這段要比頁面內容更早跑：只要使用者設過密碼，就先把解鎖畫面掛上，
@@ -1919,6 +1921,12 @@ $("wSaveBtn").addEventListener("click", async function(){
   renderWardrobe();
 });
 function renderWardrobe(){
+  /* 選取會重繪整個網格，鍵盤使用者按 Enter/Space 後焦點會掉到 body、要重 Tab 一輪，
+     所以先記住正在哪一件上，畫完再放回去 */
+  var keepFocus=null;
+  if(document.activeElement && document.activeElement.classList && document.activeElement.classList.contains("ph")){
+    keepFocus=document.activeElement.getAttribute("data-wid");
+  }
   var g=$("wardrobeGrid"); g.innerHTML="";
   $("wardrobeEmpty").style.display=state.wardrobe.length?"none":"block";
   var selCount=Object.keys(state.selectedWardrobe).filter(function(k){return state.selectedWardrobe[k];}).length;
@@ -1927,7 +1935,7 @@ function renderWardrobe(){
     var on=!!state.selectedWardrobe[w.id];
     var card=document.createElement("div"); card.className="card wcard"+(on?" wardrobe-sel":"");
     var noteUrl=(w.note||"").match(/https?:\/\/\S+/);
-    card.innerHTML="<button type='button' class='ph' aria-pressed='"+on+"'><img alt='"+esc(w.name)+"的照片'/><span class='pickbadge' aria-hidden='true'>✓ 已選</span></button><div class='bd'>"+
+    card.innerHTML="<button type='button' class='ph' data-wid='"+w.id+"' aria-pressed='"+on+"'><img alt='"+esc(w.name)+"的照片'/><span class='pickbadge' aria-hidden='true'>✓ 已選</span></button><div class='bd'>"+
       (w.brand?"<div class='brand'>"+esc(w.brand)+"</div>":"")+
       "<div class='nm'>"+esc(w.name)+"</div>"+
       "<div class='meta'>"+esc(w.category)+"</div>"+
@@ -1966,6 +1974,10 @@ function renderWardrobe(){
     card.querySelector("[data-a=edit]").addEventListener("click", function(){ openEditWardrobe(w); });
     g.appendChild(card);
   });
+  if(keepFocus){
+    var again=g.querySelector(".ph[data-wid='"+keepFocus+"']");
+    if(again) again.focus();
+  }
 }
 /* 編輯衣櫃 */
 var editingWardrobe=null, editingImage=null;
@@ -2914,7 +2926,12 @@ function showViewerImage(src, name){
   $("vNext").style.display=hasNav?"inline-flex":"none";
   $("vCount").style.display=hasNav?"inline":"none";
   if(hasNav) $("vCount").textContent=(viewerIndex+1)+" / "+viewerList.length;
-  $("viewer").classList.add("show");
+  var v=$("viewer");
+  v.classList.add("show");
+  /* 背景一變 inert，原本的焦點會被丟回 body；把焦點移進對話框，
+     螢幕閱讀器才會唸出「全螢幕檢視」，Tab 也從裡面開始 */
+  if(v.getAttribute("tabindex")!=="-1") v.setAttribute("tabindex","-1");
+  v.focus();
 }
 function switchViewer(dir){
   if(!viewerList || viewerList.length<2) return;
@@ -2932,6 +2949,9 @@ $("vShare").addEventListener("click", function(){ if(viewerFile) shareImageTo(vi
 var viewerOpener=null;
 function closeViewer(){
   $("viewer").classList.remove("show");
+  /* P3-8 之後背景是 inert，而 inert 子樹不能聚焦；MutationObserver 是非同步的，
+     所以這裡要先同步解掉，不然下面的 focus() 會被靜靜吃掉 */
+  if(typeof syncModalInert==="function") syncModalInert();
   if(viewerOpener && viewerOpener.focus){ viewerOpener.focus(); }
   viewerOpener=null;
 }
