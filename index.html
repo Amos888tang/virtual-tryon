@@ -1439,6 +1439,20 @@ function qualityRoleOf(m){
   if(h && h.id===m.id) return "high";
   return "";
 }
+/* 刪掉模型時，把畫質對應裡指向它的記錄一起清掉，避免對應到不存在的模型 */
+function clearQualityForIds(ids, vendor){
+  var map=readQualityMap(), u=map[state.userId||"guest"];
+  if(!u) return;
+  if(ids.indexOf(u.normal)>=0) delete u.normal;
+  if(ids.indexOf(u.high)>=0) delete u.high;
+  var pair=((u.byVendor||{})[vendor]);
+  if(pair){
+    if(ids.indexOf(pair.normal)>=0) delete pair.normal;
+    if(ids.indexOf(pair.high)>=0) delete pair.high;
+    if(!pair.normal && !pair.high) delete u.byVendor[vendor];
+  }
+  try{ localStorage.setItem(LS_QUALITY, JSON.stringify(map)); }catch(e){}
+}
 /* 編輯「一般畫質模型」之後，同一廠商只能留一組一般／高畫質：
    被換掉的舊高畫質（以及編輯時改廠商前那個舊廠商的整組）直接從清單移除，不保留。 */
 function pruneReplacedQuality(rec, highRec, editing){
@@ -1786,7 +1800,7 @@ async function refreshModelList(){
   var v=$("mVendor").value;
   if(v==="custom"){ toast("自訂廠商沒有清單可查。"); return; }
   var saved=state.models.filter(function(m){ return m.vendor===v; });
-  var typedKey=$("mKey").value.trim();
+  var typedKey=editingModelId?"":$("mKey").value.trim();
   var savedKey=(saved.filter(function(m){ return m.apiKey; })[0]||{}).apiKey||"";
   if(!typedKey && !savedKey && v!=="openrouter" && v!=="pollinations"){
     toast("請先在「2. 輸入 API KEY」貼上金鑰，再按「取得模型清單」。");
@@ -1958,7 +1972,7 @@ function startEditModel(id){
     onModelChange();
   }
   $("mModelH").value="";
-  var highPick=qualityChoice(true);
+  var highPick=qualityChoiceFor(m.vendor, true);   /* 用「這一組自己的廠商」找高畫質，不是使用中的廠商 */
   if(highPick && highPick.vendor===m.vendor && Array.prototype.some.call($("mModelH").options, function(o){ return o.value===highPick.modelId; })){
     $("mModelH").value=highPick.modelId;
   }
@@ -1966,12 +1980,16 @@ function startEditModel(id){
   $("mAccount").value=m.accountId||"";
   $("mWorker").value=m.workerUrl||"";
   $("mCustomVendor").value=m.customVendor||"";
-  $("mKey").value="";
-  $("mKey").placeholder="留空＝沿用原本的金鑰（"+maskKey(m.apiKey)+"）";
+  $("mKey").value=maskKey(m.apiKey);
+  $("mKey").placeholder="編輯時不能更換金鑰";
+  /* 編輯時原設定只顯示、不可改；只有「取得模型清單」與兩個模型下拉可以動 */
+  $("mKey").readOnly=true;
+  ["mEndpoint","mAccount","mWorker","mCustomVendor"].forEach(function(id){ if($(id)) $(id).readOnly=true; });
+  $("mVendor").disabled=true;
   $("mSaveBtn").textContent="儲存變更";
   $("mCancelEditBtn").style.display="inline-flex";
   $("mFormMsg").textContent="";
-  $("editBannerText").textContent="「"+vendorLabel(m)+"・"+m.modelName+"」——要換型號直接改上面的「模型」那一欄，其他欄位不用動；改完按「儲存變更」。不想改就按「取消編輯」。";
+  $("editBannerText").textContent="「"+vendorLabel(m)+"・"+m.modelName+"」——API KEY、接口地址與廠商已鎖定，只能改「一般畫質」與「高畫質」模型（也可以先按「取得模型清單」更新清單）；改完按「儲存變更」，不想改就按「取消編輯」。";
   $("editBanner").style.display="block";
   /* 卡片要重畫：剛編輯的那張會變成「編輯中」並鎖住，避免使用者以為沒反應又按一次、又被問一次密碼 */
   renderModels();
@@ -1984,6 +2002,9 @@ function endEditModel(){
   editingModelId=null;
   $("mKey").value="";
   $("mKey").placeholder="貼上你的 API KEY";
+  $("mKey").readOnly=false;
+  ["mEndpoint","mAccount","mWorker","mCustomVendor"].forEach(function(id){ if($(id)) $(id).readOnly=false; });
+  $("mVendor").disabled=false;
   $("mSaveBtn").textContent="儲存";
   $("mCancelEditBtn").style.display="none";
   $("editBanner").style.display="none";
@@ -2004,6 +2025,7 @@ $("mSaveBtn").addEventListener("click", async function(){
   var v=$("mVendor").value;
   var editing=editingModelId?modelOf(editingModelId):null;
   var key=$("mKey").value.trim();
+  if(editing){ key=editing.apiKey||""; }   /* 編輯時金鑰鎖定，不能改 */
   var endpoint=$("mEndpoint").value.trim();
   if(!key && !editing){ $("mFormMsg").innerHTML="<span class='err-text'>請先貼上 API KEY。</span>"; return; }
   if(!endpoint){ $("mFormMsg").innerHTML="<span class='err-text'>接口地址是空的，請填入或重新選一次模型帶入預設值。</span>"; return; }
@@ -2070,18 +2092,37 @@ $("mSaveBtn").addEventListener("click", async function(){
   setModelSub("add");   /* 存檔訊息與「設定解鎖密碼」都在表單檢視裡，確保看得到 */
   renderModels(); renderTryonSummary(); refreshPwSetup(); refreshLock();
 });
+/* 清單順序：使用中的廠商排最前面（先使用中的一般畫質，再接同廠商的高畫質），
+   其他廠商依廠商名稱排序；每家都是先一般畫質、再高畫質，其餘照模型名稱排。 */
+function listOrderedModels(){
+  var groups={};
+  state.models.forEach(function(m){ (groups[m.vendor]=groups[m.vendor]||[]).push(m); });
+  var active=modelOf(state.activeModelId);
+  function vlabel(v){ return vendorLabel({vendor:v, customVendor:(groups[v][0]&&groups[v][0].customVendor)||""}); }
+  var vendors=Object.keys(groups).sort(function(a,b){ return vlabel(a).localeCompare(vlabel(b),"zh-Hant"); });
+  if(active && groups[active.vendor]){
+    vendors=vendors.filter(function(v){ return v!==active.vendor; });
+    vendors.unshift(active.vendor);
+  }
+  var out=[];
+  vendors.forEach(function(v){
+    var list=groups[v].slice(), seen={}, ordered=[];
+    var n=qualityChoiceFor(v,false);
+    if(!n && active && active.vendor===v) n=active;
+    if(n && list.some(function(m){ return m.id===n.id; })){ ordered.push(n); seen[n.id]=1; }
+    var h=qualityChoiceFor(v,true)||((v===qualityVendor())?defaultQualityModel(true):null);
+    if(h && !seen[h.id] && list.some(function(m){ return m.id===h.id; })){ ordered.push(h); seen[h.id]=1; }
+    list.filter(function(m){ return !seen[m.id]; })
+        .sort(function(a,b){ return String(a.modelName||"").localeCompare(String(b.modelName||""),"zh-Hant"); })
+        .forEach(function(m){ ordered.push(m); });
+    out=out.concat(ordered);
+  });
+  return out;
+}
 function renderModels(){
   var list=$("modelList"); list.innerHTML="";
   $("modelEmpty").style.display=state.models.length?"none":"block";
-  /* 使用中的一般畫質模型，和它同廠商的高畫質模型，兩個一起放最上面；其他照原本順序排在下面 */
-  var active=modelOf(state.activeModelId);
-  var ordered=[], seen={};
-  if(active){
-    ordered.push(active); seen[active.id]=1;
-    var hi=qualityHighOf(active);
-    if(hi){ ordered.push(hi); seen[hi.id]=1; }
-  }
-  state.models.forEach(function(m){ if(!seen[m.id]) ordered.push(m); });
+  var ordered=listOrderedModels();
   ordered.forEach(function(m){
     var div=document.createElement("div");
     div.className="model-item"+(m.id===state.activeModelId?" active":"");
@@ -2102,8 +2143,10 @@ function renderModels(){
       (m.keyEnc?"":"<div class='kv warn-text'>這組金鑰是明碼存在瀏覽器裡。設定解鎖密碼之後，金鑰會自動改成密文儲存。</div>")+
       "<div style='display:flex;gap:8px;margin-top:8px;flex-wrap:wrap'>"+
       ((role==="high")?"":"<button class='btn small' data-act='edit'"+(m.id===editingModelId?" disabled":"")+">"+(m.id===editingModelId?"編輯中":"編輯")+"</button>")+
-      ((m.id===state.activeModelId||role==="high")?"":"<button class='btn small' data-act='use'>設為使用中</button>")+
-      "<button class='btn small danger' data-act='del'>刪除這組</button></div>";
+      ((role==="high")?"":(m.id===state.activeModelId
+        ? "<button class='btn small' data-act='use' disabled aria-disabled='true'>預設模型</button>"
+        : "<button class='btn small' data-act='use'>設為預設模型</button>"))+
+      "<button class='btn small danger' data-act='del'>刪除</button></div>";
     div.querySelectorAll("button").forEach(function(b){
       b.addEventListener("click", function(){
         var act=b.getAttribute("data-act");
@@ -2123,11 +2166,24 @@ function renderModels(){
             renderModels(); renderTryonSummary(); toast("已切換使用中的模型。");
           });
         } else {
+          var isHigh=role==="high";
           requirePassword("刪除模型「"+m.modelName+"」", function(){
             if(editingModelId===m.id) endEditModel();
-            state.models=state.models.filter(function(x){return x.id!==m.id;});
-            if(state.activeModelId===m.id) state.activeModelId=state.models.length?state.models[0].id:null;
-            saveModels(); renderModels(); renderTryonSummary(); toast("已刪除這組模型。");
+            var ids=[m.id], pairedHigh=null;
+            if(!isHigh){
+              /* 刪一般畫質＝這個廠商那一組一起刪掉，不會留下孤零零的高畫質 */
+              pairedHigh=qualityChoiceFor(m.vendor, true);
+              if(pairedHigh && pairedHigh.id!==m.id) ids.push(pairedHigh.id);
+            }
+            state.models=state.models.filter(function(x){ return ids.indexOf(x.id)<0; });
+            clearQualityForIds(ids, m.vendor);
+            if(ids.indexOf(state.activeModelId)>=0) state.activeModelId=state.models.length?state.models[0].id:null;
+            saveModels(); renderModels(); renderTryonSummary();
+            if(isHigh){
+              toast("已刪除高畫質模型。這個廠商現在沒有高畫質模型，請到一般模型按「編輯」重新選一組。");
+            } else {
+              toast(pairedHigh?("已刪除「"+m.modelName+"」和它的高畫質模型。"):"已刪除這組模型。");
+            }
           });
         }
       });
