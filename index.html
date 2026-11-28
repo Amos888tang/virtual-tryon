@@ -477,6 +477,12 @@ section.block > :first-child{margin-top:0}
   /* 檢視器底部操作說明（原本行內 .85rem） */
   #viewer p{font-size:1.05rem !important}
 }
+/* 2026-11-28：每個功能頁右上角的「登出」鈕（電腦與手機都顯示，登入後才出現） */
+.page-head{position:relative}
+.page-head .pageLogout{position:absolute;right:2px;top:26px;display:none}
+@media (max-width:560px){
+  .page-head .pageLogout{top:14px;right:0;min-height:2.75rem;font-size:1rem;padding:6px 16px}
+}
 </style>
 <script>
 /* 這段要比頁面內容更早跑：只要使用者設過密碼，就先把解鎖畫面掛上，
@@ -3155,6 +3161,7 @@ async function startUserSession(acc,pw){
   $("authOverlay").classList.remove("show");
   document.documentElement.classList.remove("auth-pending");
   $("whoWrap").style.display="block"; $("acctBlock").style.display="flex"; $("whoami").textContent=acc.email;
+  syncPageLogout();
   $("authPw").value=""; $("authPw2").value=""; $("authErr").textContent="";
   renderPhotos(); renderWardrobe(); renderResults(); renderAngleGroups(); renderModels();
   renderTryonSummary(); refreshPwSetup(); refreshLock();
@@ -3170,6 +3177,7 @@ function logoutAccount(){
   state.activeModelId=null; state.selectedPhotoId=null; state.selectedWardrobe={}; state.activeAngleGroupId=null;
   state.lastTryonFail=null; state.trash=[];
   $("whoWrap").style.display="none"; $("acctBlock").style.display="none"; $("whoami").textContent="";
+  syncPageLogout();
   showRescueBanner(0);
   renderPhotos(); renderWardrobe(); renderResults(); renderAngleGroups(); renderModels(); renderTryonSummary(); renderTrash();
   document.documentElement.classList.add("auth-pending");
@@ -3181,6 +3189,21 @@ function logoutAccount(){
 }
 $("authSwitchBtn").addEventListener("click", function(){ setAuthMode(authMode==="login"?"register":"login"); });
 $("logoutBtn").addEventListener("click", function(){ logoutAccount(); toast("已登出，換人使用請用自己的帳號登入。"); });
+/* 2026-11-28：每個功能頁右上角都放一顆「登出」，電腦與手機共用同一顆（登入後才顯示） */
+(function mountPageLogout(){
+  document.querySelectorAll(".page .page-head").forEach(function(h){
+    if(h.querySelector(".pageLogout")) return;
+    var b=document.createElement("button");
+    b.type="button"; b.className="btn small pageLogout"; b.textContent="登出";
+    b.setAttribute("aria-label","登出目前帳號");
+    b.addEventListener("click", function(){ logoutAccount(); toast("已登出，換人使用請用自己的帳號登入。"); });
+    h.appendChild(b);
+  });
+})();
+function syncPageLogout(){
+  var on=!!(typeof state!=="undefined" && state && state.accountEmail);
+  document.querySelectorAll(".pageLogout").forEach(function(b){ b.style.display=on?"inline-flex":"none"; });
+}
 function authBusy(on,label){
   var b=$("authGoBtn");
   b.disabled=!!on;
@@ -4039,6 +4062,7 @@ async function startCloudSession(pw){
   $("authOverlay").classList.remove("show");
   document.documentElement.classList.remove("auth-pending");
   $("whoWrap").style.display="block"; $("acctBlock").style.display="flex"; $("whoami").textContent=state.accountEmail;
+  syncPageLogout();
   $("authPw").value=""; $("authPw2").value=""; $("authErr").textContent="";
   renderAll(); refreshSyncStatus(); startAutoSync(); renderDataLine();
   toast("已登入並同步："+state.accountEmail+(moved?("（已把這台裝置原本的 "+moved+" 筆資料搬進雲端帳號）"):""));
