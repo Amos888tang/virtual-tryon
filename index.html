@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <meta name="color-scheme" content="light dark" />
 <link rel="icon" href="data:," />
-<title>虛擬試穿靜態版</title>
+<title>虛擬試穿</title>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+TC:wght@600;700&display=swap" rel="stylesheet" />
 <style>
@@ -24,7 +24,7 @@
   }
 }
 *{box-sizing:border-box}
-html{scroll-behavior:smooth}
+@media (prefers-reduced-motion: no-preference){html{scroll-behavior:smooth}}
 body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Sans TC",system-ui,sans-serif;line-height:1.55}
 button,[role="button"],select,summary,input:not([type="checkbox"],[type="radio"]),textarea{ min-height:2.25rem; }
 button{cursor:pointer}
@@ -43,13 +43,13 @@ h2{font-size:1.35rem}
 section.block{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:18px;margin:18px 0;box-shadow:var(--shadow)}
 .sec-head{display:flex;flex-wrap:wrap;align-items:baseline;gap:8px 14px;margin-bottom:6px}
 .sec-head .hint{color:var(--ink2);font-size:.9rem}
-.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;border:1px solid var(--line);background:var(--surface2);color:var(--ink);border-radius:9px;padding:8px 14px;font-size:.95rem;font-weight:500;text-decoration:none}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;border:1px solid var(--line);background:var(--surface2);color:var(--ink);border-radius:9px;min-height:2.75rem;padding:8px 14px;font-size:.95rem;font-weight:500;text-decoration:none}
 .btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:700}
 .btn.ghost{background:transparent}
 .btn.danger{color:var(--err)}
 .btn:disabled{opacity:.45;cursor:not-allowed}
-.btn.small{padding:4px 10px;font-size:.86rem;min-height:2rem}
-input[type=text],input[type=password],input[type=url],select,textarea{width:100%;border:1px solid var(--line);border-radius:9px;background:var(--surface);color:var(--ink);padding:8px 10px;font-size:1rem;font-family:inherit}
+.btn.small{padding:4px 10px;font-size:.86rem;min-height:2.5rem}
+input[type=text],input[type=password],input[type=url],select,textarea{width:100%;border:1px solid var(--line-input);border-radius:9px;background:var(--surface);color:var(--ink);padding:8px 10px;font-size:1rem;font-family:inherit}
 textarea{resize:vertical}
 label.fl{display:block;font-size:.9rem;color:var(--ink2);margin:10px 0 4px}
 .grid{display:grid;gap:14px}
@@ -234,7 +234,7 @@ body{padding-bottom:70px}
 .sec-head h2{font-size:1.02rem;font-weight:700;letter-spacing:0}
 .sec-head .hint{font-size:.82rem;line-height:1.5;max-width:96ch}
 .btn{border-radius:11px}
-.btn.small{border-radius:9px;min-height:1.9rem}
+.btn.small{border-radius:9px;min-height:2.5rem}
 input[type=text],input[type=password],input[type=url],input[type=email],select,textarea{border-radius:10px}
 button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 /* iOS 分段控制項 */
@@ -296,13 +296,13 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 /* ============ V2.1 編輯部時尚（只改視覺層） ============ */
 :root{
   --bg:#F7F3EC; --surface:#FFFDF9; --surface2:#EFE7D9; --ink:#201A15; --ink2:#756558;
-  --line:#E2D5C3; --accent:#9C3F2A; --accent-ink:#FFF8F3; --accent-soft:#F1DFD6;
+  --line:#E2D5C3; --line-input:#A88F76; --accent:#9C3F2A; --accent-ink:#FFF8F3; --accent-soft:#F1DFD6;
   --chip:#EDE5D6; --shadow:0 18px 40px rgba(32,20,10,.14);
 }
 @media (prefers-color-scheme: dark){
   :root{
     --bg:#141110; --surface:#1E1A17; --surface2:#2A231E; --ink:#F4EBE1; --ink2:#B6A594;
-    --line:#3A2F27; --accent:#E07A5F; --accent-ink:#1B0F0A; --accent-soft:#42261D;
+    --line:#3A2F27; --line-input:#7A6455; --accent:#E07A5F; --accent-ink:#1B0F0A; --accent-soft:#42261D;
     --chip:#302720; --shadow:0 18px 40px rgba(0,0,0,.5);
   }
 }
@@ -348,8 +348,8 @@ section.block{background:transparent;border:0;border-top:1px solid var(--line);b
 ::selection{background:var(--accent-soft);color:var(--ink)}
 
 /* 表單 */
-input[type=text],input[type=password],input[type=url],input[type=email],select,textarea{border-radius:3px;background:var(--surface);border-color:var(--line)}
-input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-soft);outline:none}
+input[type=text],input[type=password],input[type=url],input[type=email],select,textarea{border-radius:3px;background:var(--surface);border-color:var(--line-input)}
+input:focus:not(:focus-visible),select:focus:not(:focus-visible),textarea:focus:not(:focus-visible){border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-soft);outline:none}
 
 /* 分段控制項 */
 .seg{border-radius:4px;background:var(--surface2);padding:3px;gap:2px}
@@ -405,6 +405,18 @@ section.block > :first-child{margin-top:0}
   section.block{padding:20px 0 4px}
   .sec-head h2{font-size:1.22rem}
 }
+
+/* a11y 2026-11-28：衣櫥照片由 div 改為 <button>，歸零按鈕預設樣式並補鍵盤焦點 */
+.wcard button.ph{width:100%;margin:0;border:0;border-radius:0;font:inherit;color:inherit;text-align:inherit;background:var(--surface2);-webkit-appearance:none;appearance:none}
+.wcard button.ph:focus-visible{outline:3px solid var(--ink);outline-offset:-3px}
+/* a11y 2026-11-28 P2-6：衣櫥卡片四顆按鈕（複製／編輯／刪除／放大）
+   390px 下改成兩排各兩顆、每顆 44px 高（原本 32px，且放大已被擠到第二排單獨一行） */
+.card.wcard .row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
+.card.wcard .row .linklike{min-height:2.75rem;padding:6px 10px;justify-self:stretch;text-align:center}
+/* a11y 2026-11-28 P4：檢視器按鈕的 emoji 換成跟 tabbar 同一套線性圖示 */
+#viewer .vbar button svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;vertical-align:-3px;margin-right:2px}
+/* a11y 2026-11-28：.btn 內的線性圖示（匯出鈕） */
+.btn svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;flex:0 0 auto}
 </style>
 <script>
 /* 這段要比頁面內容更早跑：只要使用者設過密碼，就先把解鎖畫面掛上，
@@ -420,7 +432,7 @@ section.block > :first-child{margin-top:0}
 
 <div id="hud" role="status" aria-live="polite"><span class="hl" id="hudLabel">生成中</span><span class="hp" id="hudPct">0%</span><span class="hd" id="hudDetail"></span></div>
 
-<div id="authOverlay" role="dialog" aria-label="登入畫面">
+<div id="authOverlay" role="dialog" aria-modal="true" aria-label="登入畫面">
   <div class="lockbox">
     <h2 id="authTitle">登入</h2>
     <p class="kv" id="authSub">每一台裝置各自保存資料，每個人有自己的衣櫃、成品與模型設定。</p>
@@ -484,7 +496,7 @@ section.block > :first-child{margin-top:0}
   </div>
 </div>
 
-<div id="lockOverlay" role="dialog" aria-label="解鎖畫面">
+<div id="lockOverlay" role="dialog" aria-modal="true" aria-label="解鎖畫面">
   <div class="lockbox">
     <div id="lockForm">
       <h2>先選模型、輸入密碼</h2>
@@ -513,8 +525,8 @@ section.block > :first-child{margin-top:0}
     <h1>虛擬試穿</h1>
   </div>
 
-  <nav class="topnav" id="topnav">
-    <button class="tnav on" data-page="fitting">穿衣間</button>
+  <nav class="topnav" id="topnav" aria-label="主要導覽">
+    <button class="tnav on" data-page="fitting" aria-current="page">穿衣間</button>
     <button class="tnav" data-page="history">試穿紀錄</button>
     <button class="tnav" data-page="wardrobe">衣櫥</button>
     <button class="tnav" data-page="base">人物底圖</button>
@@ -535,8 +547,8 @@ section.block > :first-child{margin-top:0}
     <section class="page" id="page-base">
       <header class="page-head"><h1>人物底圖</h1><p class="psub">單張上傳，或生成正面／左側／右側／後面的多角度底圖。</p></header>
       <div class="seg" id="baseSeg">
-        <button type="button" class="on" data-sub="photos">單張上傳</button>
-        <button type="button" data-sub="angles">多角度生成</button>
+        <button type="button" class="on" data-sub="photos" aria-pressed="true">單張上傳</button>
+        <button type="button" data-sub="angles" aria-pressed="false">多角度生成</button>
       </div>
     </section>
     <section class="page" id="page-models">
@@ -560,7 +572,7 @@ section.block > :first-child{margin-top:0}
     <p class="small">2．靜態版<strong>沒有</strong> Muse 內建生圖。生成時是瀏覽器拿你的照片和金鑰，直接去叫你選的那家廠商 API，所以要先在「模型」頁存好至少一組模型才能生成；還沒存的話，生成按鈕會引導你先新增。</p>
     <p class="small">3．在中國能不能連上，取決於部署網址和廠商：github.io 通常打得開，workers.dev／vercel.app 常被擋；OpenAI、Google、Meta 的 API 在中國連不上，智譜連得上但它的生圖接口只吃文字、不能拿照片試穿（見模型清單標示）。做好後請在當地實際開一次、跑一張圖確認。</p>
     <p style="margin-top:10px">
-      <button class="btn" id="exportBtn">⬇ 下載這支程式（單一 HTML 檔）</button>
+      <button class="btn" id="exportBtn"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v12M8 12l4 4 4-4"/><path d="M5 20h14"/></svg> 下載這支程式（單一 HTML 檔）</button>
       <span class="kv">下載回去就是完整程式，解壓／部署都不需要後端；放到任何靜態空間就能用。</span>
     </p>
   </div>
@@ -574,7 +586,7 @@ section.block > :first-child{margin-top:0}
       <label class="btn primary" for="photoUpload">上傳全身照</label>
       <input type="file" id="photoUpload" accept="image/*" multiple hidden />
       <button class="btn" id="photoReplaceBtn">換目前這張</button>
-      <input type="file" id="photoReplaceFile" accept="image/*" hidden />
+      <input type="file" id="photoReplaceFile" aria-label="換目前這張的圖檔" accept="image/*" hidden />
       <button class="btn danger" id="photoDeleteBtn">刪除目前這張</button>
     </div>
     </div><div class="base-lib">
@@ -588,7 +600,7 @@ section.block > :first-child{margin-top:0}
     <div class="sec-head"><h2>衣服</h2><span class="hint">照片下方的按鈕可複製、編輯、刪除或放大；複製會保留品牌與分類，方便做同款不同色。</span></div>
     <div class="form-grid">
       <div>
-        <label class="fl">用上傳照片新增</label>
+        <label class="fl" for="wFile">用上傳照片新增</label>
         <input type="file" id="wFile" accept="image/*" hidden />
         <label class="btn primary" for="wFile">上傳衣服照片</label>
       </div>
@@ -604,12 +616,12 @@ section.block > :first-child{margin-top:0}
     <div id="wAddForm" style="display:none">
       <div class="main-photo" style="aspect-ratio:16/10"><img id="wPreview" alt="待新增的衣服照片" /></div>
       <div class="form-grid">
-        <div class="full"><label class="fl">品牌名稱（可不填）</label><input type="text" id="wBrand" placeholder="例：UNIQLO、NIKE" /></div>
-        <div><label class="fl">衣服名稱</label><input type="text" id="wName" placeholder="例：麻花圓領針織外套" /></div>
-        <div><label class="fl">分類</label><select id="wCat"></select></div>
-        <div class="full"><label class="fl">網址（可不填）</label><input type="url" id="wUrl" placeholder="https://…商品頁" /></div>
-        <div><label class="fl">價格（可不填）</label><input type="text" id="wPrice" placeholder="例：650" /></div>
-        <div><label class="fl">備註（可不填）</label><input type="text" id="wNote" placeholder="例：去年週年慶買的" /></div>
+        <div class="full"><label class="fl" for="wBrand">品牌名稱（可不填）</label><input type="text" id="wBrand" placeholder="例：UNIQLO、NIKE" /></div>
+        <div><label class="fl" for="wName">衣服名稱</label><input type="text" id="wName" placeholder="例：麻花圓領針織外套" /></div>
+        <div><label class="fl" for="wCat">分類</label><select id="wCat"></select></div>
+        <div class="full"><label class="fl" for="wUrl">網址（可不填）</label><input type="url" id="wUrl" placeholder="https://…商品頁" /></div>
+        <div><label class="fl" for="wPrice">價格（可不填）</label><input type="text" id="wPrice" placeholder="例：650" /></div>
+        <div><label class="fl" for="wNote">備註（可不填）</label><input type="text" id="wNote" placeholder="例：去年週年慶買的" /></div>
       </div>
       <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
         <button class="btn primary" id="wSaveBtn">加入衣櫃</button>
@@ -725,7 +737,7 @@ section.block > :first-child{margin-top:0}
       <div>
         <label class="fl" for="mModel">模型（一般畫質）</label>
         <select id="mModel"></select>
-        <input type="text" id="mModelText" placeholder="輸入模型名稱" style="display:none;margin-top:6px" />
+        <input type="text" id="mModelText" aria-label="自訂模型名稱" placeholder="輸入模型名稱" style="display:none;margin-top:6px" />
         <div id="mHighWrap" style="margin-top:10px">
           <label class="fl" for="mModelH" style="margin-top:0">模型（高畫質）</label>
           <select id="mModelH"></select>
@@ -795,8 +807,8 @@ section.block > :first-child{margin-top:0}
     <div class="empty" id="trashEmpty">垃圾桶是空的。刪掉的東西會先放這裡，可以還原。</div>
   </section>
 
-  <nav class="tabbar" id="tabbar">
-    <button class="tab on" data-page="fitting"><svg viewBox="0 0 24 24"><path d="M8 3L4 7v13h5v-6h6v6h5V7l-4-4z"/></svg><span>穿衣間</span></button>
+  <nav class="tabbar" id="tabbar" aria-label="頁面切換">
+    <button class="tab on" data-page="fitting" aria-current="page"><svg viewBox="0 0 24 24"><path d="M8 3L4 7v13h5v-6h6v6h5V7l-4-4z"/></svg><span>穿衣間</span></button>
     <button class="tab" data-page="history"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/></svg><span>紀錄</span></button>
     <button class="tab" data-page="wardrobe"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M9 4v16M4 9h16"/></svg><span>衣櫥</span></button>
     <button class="tab" data-page="base"><svg viewBox="0 0 24 24"><circle cx="12" cy="7" r="3.5"/><path d="M5 20c0-4 3-6 7-6s7 2 7 6"/></svg><span>底圖</span></button>
@@ -808,17 +820,17 @@ section.block > :first-child{margin-top:0}
 </div>
 
 <!-- viewer -->
-<div id="viewer" role="dialog" aria-label="全螢幕檢視">
+<div id="viewer" role="dialog" aria-modal="true" aria-label="全螢幕檢視">
   <div class="vbar">
-    <button id="vZoomOut">－ 縮小</button>
-    <button id="vZoomReset">原始比例</button>
-    <button id="vZoomIn">＋ 放大</button>
-    <button id="vPrev" style="display:none">‹ 上一張</button>
+    <button id="vZoomOut"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4.2-4.2M8 11h6"/></svg> 縮小</button>
+    <button id="vZoomReset"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M9 9h6v6H9z"/></svg> 原始比例</button>
+    <button id="vZoomIn"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4.2-4.2M8 11h6M11 8v6"/></svg> 放大</button>
+    <button id="vPrev" style="display:none"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg> 上一張</button>
     <span id="vCount" style="display:none"></span>
-    <button id="vNext" style="display:none">下一張 ›</button>
-    <button id="vShare" style="display:none">📤 存到相簿／分享</button>
-    <button id="vSave">⬇ 存檔</button>
-    <button id="vClose">✕ 關閉</button>
+    <button id="vNext" style="display:none"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg> 下一張</button>
+    <button id="vShare" style="display:none"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15V4M8 8l4-4 4 4"/><path d="M5 13v6h14v-6"/></svg> 存到相簿／分享</button>
+    <button id="vSave"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v12M8 12l4 4 4-4"/><path d="M5 20h14"/></svg> 存檔</button>
+    <button id="vClose"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg> 關閉</button>
   </div>
   <div id="vstage"><img id="vimg" alt="放大檢視的圖片" /></div>
   <p style="text-align:center;color:#b8a894;font-size:.85rem;margin:6px">滾輪或按鈕縮放・拖曳移動・雙擊切換放大</p>
@@ -847,17 +859,17 @@ section.block > :first-child{margin-top:0}
     <label class="btn small" for="eFile">點照片換一張（也可點這裡）</label>
     <input type="file" id="eFile" accept="image/*" hidden />
     <div style="display:flex;gap:8px;margin-top:8px">
-      <input type="url" id="eImgUrl" placeholder="或貼照片網址抓圖（.jpg/.png 直連網址最快）" style="flex:1" />
+      <input type="url" id="eImgUrl" aria-label="照片網址（抓圖用）" placeholder="或貼照片網址抓圖（.jpg/.png 直連網址最快）" style="flex:1" />
       <button class="btn small" id="eFetchBtn" style="white-space:nowrap">抓圖</button>
     </div>
     <p id="eFetchMsg" class="kv" style="min-height:1.3em"></p>
-    <label class="fl">品牌名稱（可不填）</label><input type="text" id="eBrand" placeholder="例：UNIQLO、NIKE" />
-    <label class="fl">衣服名稱</label><input type="text" id="eName" />
-    <label class="fl">分類</label><select id="eCat"></select>
-    <label class="fl">網址（可不填，填了可直接點開）</label><input type="url" id="eUrl" placeholder="https://…" />
+    <label class="fl" for="eBrand">品牌名稱（可不填）</label><input type="text" id="eBrand" placeholder="例：UNIQLO、NIKE" />
+    <label class="fl" for="eName">衣服名稱</label><input type="text" id="eName" />
+    <label class="fl" for="eCat">分類</label><select id="eCat"></select>
+    <label class="fl" for="eUrl">網址（可不填，填了可直接點開）</label><input type="url" id="eUrl" placeholder="https://…" />
     <p style="margin:2px 0"><a id="eUrlOpen" href="#" target="_blank" rel="noopener" style="display:none" class="linklike">開啟這個網址 ↗</a></p>
-    <label class="fl">價格（可不填）</label><input type="text" id="ePrice" placeholder="例：650" />
-    <label class="fl">備註（可不填）</label><input type="text" id="eNote" />
+    <label class="fl" for="ePrice">價格（可不填）</label><input type="text" id="ePrice" placeholder="例：650" />
+    <label class="fl" for="eNote">備註（可不填）</label><input type="text" id="eNote" />
     <div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap">
       <button class="btn primary" id="eSaveBtn">儲存修改</button>
       <button class="btn ghost" id="eCancelBtn">取消</button>
@@ -883,7 +895,7 @@ section.block > :first-child{margin-top:0}
 
     <label class="fl" for="suModel">2．選模型</label>
     <select id="suModel"></select>
-    <input type="text" id="suModelText" placeholder="輸入模型名稱" style="display:none;margin-top:6px" />
+    <input type="text" id="suModelText" aria-label="自訂模型名稱" placeholder="輸入模型名稱" style="display:none;margin-top:6px" />
     <p class="kv" id="suModelInfo" style="margin:6px 0 0"></p>
 
     <div id="suAccountWrap" style="display:none"><label class="fl" for="suAccount">Cloudflare Account ID</label><input type="text" id="suAccount" placeholder="Cloudflare 帳號 ID" /></div>
@@ -1782,7 +1794,7 @@ function renderPhotos(){
     b.style.width="100%";
     var img=document.createElement("img"); img.src=p.dataUrl; img.alt="照片庫裡的全身照"; b.appendChild(img);
     b.addEventListener("click", function(){ state.selectedPhotoId=p.id; state.activeAngleGroupId=null; renderPhotos(); renderTryonSummary(); renderAngleGroups(); });
-    var del=document.createElement("button"); del.className="del"; del.textContent="✕"; del.title="刪除這張"; del.style.cssText="position:absolute;top:4px;right:4px;width:2rem;height:2rem;border-radius:50%;border:1px solid var(--line);background:var(--surface);color:var(--err);z-index:2";
+    var del=document.createElement("button"); del.className="del"; del.textContent="✕"; del.title="刪除這張"; del.setAttribute("aria-label","刪除這張照片"); del.style.cssText="position:absolute;top:4px;right:4px;width:2rem;height:2rem;border-radius:50%;border:1px solid var(--line);background:var(--surface);color:var(--err);z-index:2";
     del.addEventListener("click", async function(){
       await trashItem("photos",p.id);
       state.photos=state.photos.filter(function(x){return x.id!==p.id;});
@@ -1915,7 +1927,7 @@ function renderWardrobe(){
     var on=!!state.selectedWardrobe[w.id];
     var card=document.createElement("div"); card.className="card wcard"+(on?" wardrobe-sel":"");
     var noteUrl=(w.note||"").match(/https?:\/\/\S+/);
-    card.innerHTML="<div class='ph'><img alt='"+esc(w.name)+"的照片'/><span class='pickbadge'>✓ 已選</span></div><div class='bd'>"+
+    card.innerHTML="<button type='button' class='ph' aria-pressed='"+on+"'><img alt='"+esc(w.name)+"的照片'/><span class='pickbadge' aria-hidden='true'>✓ 已選</span></button><div class='bd'>"+
       (w.brand?"<div class='brand'>"+esc(w.brand)+"</div>":"")+
       "<div class='nm'>"+esc(w.name)+"</div>"+
       "<div class='meta'>"+esc(w.category)+"</div>"+
@@ -2418,7 +2430,7 @@ function renderTryonPreview(base, items){
     var ri=document.createElement("img"); ri.src=ref.dataUrl; ri.alt="補圖參考照";
     var rt=document.createElement("span"); rt.className="tag"; rt.textContent="補圖參考";
     var rc=document.createElement("div"); rc.className="cap"; rc.textContent="只補手腳／下半身與比例，不抄衣服";
-    var rr=document.createElement("button"); rr.className="rm"; rr.type="button"; rr.title="這次不要用它補"; rr.textContent="✕";
+    var rr=document.createElement("button"); rr.className="rm"; rr.type="button"; rr.title="這次不要用它補"; rr.textContent="✕"; rr.setAttribute("aria-label","這次不要用這張參考照");
     rr.addEventListener("click", function(){ refChoice="none"; saveRefChoice(); renderTryonSummary(); });
     rd.appendChild(ri); rd.appendChild(rt); rd.appendChild(rc); rd.appendChild(rr);
     box.appendChild(rd);
@@ -2428,7 +2440,7 @@ function renderTryonPreview(base, items){
     var im=document.createElement("img"); im.src=w.dataUrl; im.alt=w.name;
     var tg=document.createElement("span"); tg.className="tag"; tg.textContent="衣服 "+(i+1);
     var cp=document.createElement("div"); cp.className="cap"; cp.textContent=w.name+(w.category?"（"+w.category+"）":"");
-    var rm=document.createElement("button"); rm.className="rm"; rm.type="button"; rm.title="這次不要用這一件"; rm.textContent="✕";
+    var rm=document.createElement("button"); rm.className="rm"; rm.type="button"; rm.title="這次不要用這一件"; rm.textContent="✕"; rm.setAttribute("aria-label","不要用「"+w.name+"」試穿");
     rm.addEventListener("click", function(){
       delete state.selectedWardrobe[w.id];
       renderWardrobe(); renderTryonSummary();
@@ -2915,7 +2927,45 @@ function switchViewer(dir){
 }
 $("vSave").addEventListener("click", function(){ if(viewerFile) saveImageTo(viewerFile.dataUrl, viewerFile.name); });
 $("vShare").addEventListener("click", function(){ if(viewerFile) shareImageTo(viewerFile.dataUrl, viewerFile.name); });
-$("vClose").addEventListener("click", function(){ $("viewer").classList.remove("show"); });
+
+/* a11y 2026-11-28：全螢幕檢視的關閉集中一處；Esc 可關，關閉後焦點回到開啟它的元素 */
+var viewerOpener=null;
+function closeViewer(){
+  $("viewer").classList.remove("show");
+  if(viewerOpener && viewerOpener.focus){ viewerOpener.focus(); }
+  viewerOpener=null;
+}
+$("vClose").addEventListener("click", closeViewer);
+document.addEventListener("click", function(e){
+  if(!$("viewer").contains(e.target)){
+    viewerOpener=(e.target.closest && e.target.closest("button,a,[role=button]")) || null;
+  }
+}, true);
+document.addEventListener("keydown", function(e){
+  if(e.key==="Escape" && $("viewer").classList.contains("show")){ closeViewer(); }
+});
+
+/* a11y 2026-11-28 P3-8：登入／解鎖／檢視器打開時，把 .wrap 設成 inert。
+   背景不但看不到，也 Tab 不進去、螢幕閱讀器不會唸（inert 比手寫 focus trap 安全）。
+   用 MutationObserver 監看三種 overlay 的顯示狀態，開關路徑再多也不會漏。 */
+function syncModalInert(){
+  var de=document.documentElement;
+  var open=de.classList.contains("auth-pending")||de.classList.contains("lock-pending")
+    ||$("authOverlay").classList.contains("show")
+    ||$("lockOverlay").classList.contains("show")
+    ||$("viewer").classList.contains("show");
+  var wrap=document.querySelector(".wrap");
+  if(wrap) wrap.toggleAttribute("inert", !!open);
+}
+(function(){
+  syncModalInert();
+  var mo=new MutationObserver(syncModalInert);
+  ["authOverlay","lockOverlay","viewer"].forEach(function(id){
+    var el=$(id); if(el) mo.observe(el,{attributes:true,attributeFilter:["class"]});
+  });
+  mo.observe(document.documentElement,{attributes:true,attributeFilter:["class"]});
+  document.addEventListener("DOMContentLoaded", syncModalInert);
+})();
 $("vPrev").addEventListener("click", function(){ switchViewer(-1); });
 $("vNext").addEventListener("click", function(){ switchViewer(1); });
 /* 手機：左右滑切換上一張／下一張 */
@@ -3417,12 +3467,21 @@ function switchPage(name){
   document.querySelectorAll(".page").forEach(function(p){ p.classList.toggle("on", p.id==="page-"+name); });
   document.querySelectorAll(".tnav").forEach(function(t){ t.classList.toggle("on", t.getAttribute("data-page")===name); });
   document.querySelectorAll(".tab").forEach(function(t){ t.classList.toggle("on", t.getAttribute("data-page")===name); });
+  /* a11y：只變色不夠，讓輔助技術知道目前在哪一頁 */
+  document.querySelectorAll(".tnav,.tab").forEach(function(t){
+    if(t.getAttribute("data-page")===name){ t.setAttribute("aria-current","page"); }
+    else{ t.removeAttribute("aria-current"); }
+  });
   try{ window.scrollTo(0,0); }catch(e){}
 }
 /* 人物底圖子分頁：單張上傳／多角度生成 */
 function setBaseSub(name){
   var seg=$("baseSeg"); if(!seg) return;
-  seg.querySelectorAll("button").forEach(function(b){ b.classList.toggle("on", b.getAttribute("data-sub")===name); });
+  seg.querySelectorAll("button").forEach(function(b){
+    var on = b.getAttribute("data-sub")===name;
+    b.classList.toggle("on", on);
+    b.setAttribute("aria-pressed", on?"true":"false");
+  });
   if($("secPhotos")) $("secPhotos").style.display = name==="photos" ? "" : "none";
   if($("secAngles")) $("secAngles").style.display = name==="angles" ? "" : "none";
 }
