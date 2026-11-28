@@ -618,8 +618,13 @@ section.block > :first-child{margin-top:0}
     <button class="btn primary" id="authGoBtn" style="width:100%">登入</button>
     <p class="kv" style="margin-top:10px"><button class="linklike" id="authSwitchBtn">還沒帳號？建立一個</button></p>
     <p class="kv" style="margin-top:4px"><button class="linklike" id="forgotPwBtn">忘記密碼？用 Email 重設</button>　<button class="linklike" id="delAccountLoginBtn" style="color:var(--err)">刪除帳戶</button></p>
-    <p class="kv authNote" style="font-size:.82rem;margin-top:14px" id="authHint">第一次用雲端、或昨天只用過本機帳號的話，請按上面的「建立一個」用同一組 Email 重建，本機資料會一起搬上去。</p>
-    <p class="kv authNote" style="font-size:.82rem;margin-top:6px">每次開啟都要重新登入；同一台裝置換人使用時，上一個人的資料會立刻從畫面清掉。換手機或電腦請用「設定」頁的備份檔搬過去。</p>
+    <p class="kv" style="margin-top:10px"><button class="linklike" id="copyLoginBtn">用其他帳號的衣櫥與模型</button></p>
+    <p class="kv" id="copyLoginHint" style="font-size:.82rem;margin-top:2px;display:none">登入後會問你要不要從其他帳號複製。</p>
+    <p class="kv" id="authCloudNote" style="font-size:.82rem;margin-top:14px">虛擬試穿是雲端運行的 App：輸入帳號與密碼後，可以在電腦、平板、手機上使用，資料由雲端保存。若不想使用雲端功能，可以下載下面的單一 HTML 檔單獨運行——單機版<strong>只能在這一台裝置使用，沒有雲端同步功能</strong>。</p>
+    <p style="margin-top:10px">
+      <button class="btn" id="exportBtn"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v12M8 12l4 4 4-4"/><path d="M5 20h14"/></svg> 下載這支程式（單一 HTML 檔）</button>
+      <span class="kv" id="exportNote" style="display:block;margin-top:6px">下載回去是完整的單一 HTML 檔，不需要後端，直接用瀏覽器開就能單獨運行。</span>
+    </p>
   </div>
 </div>
 
@@ -725,7 +730,7 @@ section.block > :first-child{margin-top:0}
     </section>
     <section class="page" id="page-settings">
       <header class="page-head"><h1>設定</h1><p class="psub">帳號、同步、備份與垃圾桶。</p></header>
-      <div class="block acctblock" id="acctBlock" style="display:none"><span class="kv" id="whoWrap" style="display:none">目前使用者：<strong id="whoami"></strong>　<button class="linklike" id="logoutBtn">登出</button></span></div>
+      <div class="block acctblock" id="acctBlock" style="display:none"><span class="kv" id="whoWrap" style="display:none">目前使用者：<strong id="whoami"></strong>　<button class="linklike" id="logoutBtn">登出</button></span><div style="margin-top:8px"><button class="btn small" id="copyFromBtn">複製其他帳號的衣櫥與模型</button></div></div>
     </section>
   </main>
 
@@ -733,13 +738,6 @@ section.block > :first-child{margin-top:0}
     <p><strong>這台裝置還有 <span id="rescueCount">0</span> 筆資料不屬於目前這個帳號</strong></p>
     <p class="small">可能是你之前用本機帳號（沒有連雲端）時建立的照片、衣櫃、成品、多角度或模型。它們還在這台裝置裡，只是換帳號後不會顯示。按下面這顆就會把它們收進目前的帳號並上傳。</p>
     <p style="margin-top:8px"><button class="btn primary" id="rescueBannerBtn">找回這台裝置的資料</button></p>
-  </div>
-
-  <div class="notice">
-    <p style="margin-top:10px">
-      <button class="btn" id="exportBtn"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v12M8 12l4 4 4-4"/><path d="M5 20h14"/></svg> 下載這支程式（單一 HTML 檔）</button>
-      <span class="kv">下載回去就是完整程式，解壓／部署都不需要後端；放到任何靜態空間就能用。</span>
-    </p>
   </div>
 
   <!-- 1. 人物照片 -->
@@ -1035,6 +1033,43 @@ section.block > :first-child{margin-top:0}
 </div>
 
 <!-- password modal -->
+<div class="modal" id="noModelModal" role="dialog" aria-modal="true" aria-label="先設定 API 模型">
+  <div class="mbox">
+    <h3 style="margin:0 0 6px;font-family:'Noto Serif TC',serif">先設定 API 模型</h3>
+    <p class="kv">還沒有可用的模型，開始試穿前要先到「API模型」頁新增一組：選廠商、貼上 API KEY、按「取得模型清單」，選好一般與高畫質模型後儲存。存好之後回到穿衣間就能試穿。</p>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
+      <button class="btn primary" id="noModelGoBtn">去 API模型 設定</button>
+      <button class="btn ghost" id="noModelCloseBtn">稍後再說</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="copyModal" role="dialog" aria-modal="true" aria-label="從其他帳號複製">
+  <div class="mbox">
+    <h3 style="margin:0 0 6px;font-family:'Noto Serif TC',serif">從其他帳號複製</h3>
+    <div id="copyAsk">
+      <p class="kv">要使用其他使用者的「我的衣櫥」內容與「API模型」設定嗎？複製完你自己的帳號就有同樣的衣服與模型，不用重新建立。照片、成品不會被複製，對方的資料也不會被改動。</p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
+        <button class="btn primary" id="copyYesBtn">要，開始複製</button>
+        <button class="btn ghost" id="copyNoBtn">不用了</button>
+      </div>
+    </div>
+    <div id="copyForm" style="display:none">
+      <p class="kv">輸入對方的帳號與密碼。只會讀取衣櫥與模型，不會變更對方的資料。</p>
+      <label class="fl" for="copyEmail">對方的帳號（Email）</label>
+      <input type="text" id="copyEmail" autocomplete="off" placeholder="other@example.com" />
+      <label class="fl" for="copyPw">對方的密碼</label>
+      <input type="password" id="copyPw" autocomplete="off" placeholder="輸入對方的密碼" />
+      <p id="copyErr" class="err-text" style="min-height:1.3em"></p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn primary" id="copyGoBtn">開始複製</button>
+        <button class="btn ghost" id="copyCancelBtn">取消</button>
+      </div>
+    </div>
+    <p id="copyMsg" class="kv"></p>
+  </div>
+</div>
+
 <div class="modal" id="pwModal">
   <div class="mbox">
     <h3 style="margin:0 0 6px;font-family:'Noto Serif TC',serif">需要密碼</h3>
@@ -1428,15 +1463,27 @@ function qualityHighOf(m){
   if(!h && m.vendor===qualityVendor()) h=defaultQualityModel(true);
   return (h && h.vendor===m.vendor && h.id!==m.id)?h:null;
 }
+/* 某廠商的一組「一般／高畫質」：先看使用者設定的對應；沒設定過（例如只存了 4B／9B
+   還沒在表單裡配對過）就用模型名稱推：4B／lite／flash 當一般，9B／Pro 當高畫質。 */
+function vendorQualityPair(vendor){
+  var list=state.models.filter(function(m){ return m.vendor===vendor; });
+  var n=qualityChoiceFor(vendor, false), h=qualityChoiceFor(vendor, true);
+  if(!n && state.activeModelId){
+    var act=modelOf(state.activeModelId);
+    if(act && act.vendor===vendor) n=act;
+  }
+  function pick(re){ return list.filter(function(m){ return re.test(m.modelName||""); })[0]||null; }
+  if(!h) h=pick(/9b|\bpro\b|高清|high/i);
+  if(!n) n=pick(/4b|lite|flash/i)||list[0]||null;
+  if(h && n && h.id===n.id) h=null;
+  if(n && h && h.id===n.id) n=null;
+  return { normal:n||null, high:h||null };
+}
 /* 這個模型在卡片上要標「一般畫質模型」還是「高畫質模型」 */
 function qualityRoleOf(m){
-  var n=qualityChoiceFor(m.vendor, false);
-  if(!n && m.id===state.activeModelId) n=m;
-  if(n && n.id===m.id) return "normal";
-  /* 這裡要直接問「這家廠商的高畫質是哪一個」，不能用 qualityHighOf（它會排除自己） */
-  var h=qualityChoiceFor(m.vendor, true);
-  if(!h && m.vendor===qualityVendor()) h=defaultQualityModel(true);
-  if(h && h.id===m.id) return "high";
+  var pair=vendorQualityPair(m.vendor);
+  if(pair.normal && pair.normal.id===m.id) return "normal";
+  if(pair.high && pair.high.id===m.id) return "high";
   return "";
 }
 /* 刪掉模型時，把畫質對應裡指向它的記錄一起清掉，避免對應到不存在的模型 */
@@ -1459,15 +1506,15 @@ function pruneReplacedQuality(rec, highRec, editing){
   var stale=[];
   if(!editing){
     /* 新增同廠商的新模型：舊的一般／高畫質整組直接被新的覆蓋掉，不保留 */
-    var on0=qualityChoiceFor(rec.vendor, false), oh0=qualityChoiceFor(rec.vendor, true);
-    if(on0) stale.push(on0.id);
-    if(oh0) stale.push(oh0.id);
+    var op=vendorQualityPair(rec.vendor);
+    if(op.normal) stale.push(op.normal.id);
+    if(op.high) stale.push(op.high.id);
   } else {
     var n0=qualityChoiceFor(editing.vendor, false);
     var wasNormal=(n0 && n0.id===editing.id) || (editing.id===state.activeModelId);
     if(!wasNormal) return;
     /* 只有「這次真的指定了另一組高畫質」才移除舊的；留空維持原本的高畫質對應 */
-    var oh=qualityChoiceFor(rec.vendor, true);
+    var op2=vendorQualityPair(rec.vendor), oh=op2.high;
     if(oh && highRec && highRec.id!==oh.id) stale.push(oh.id);
     if(editing.vendor!==rec.vendor){
       var pn=qualityChoiceFor(editing.vendor, false), ph=qualityChoiceFor(editing.vendor, true);
@@ -2107,11 +2154,10 @@ function listOrderedModels(){
   var out=[];
   vendors.forEach(function(v){
     var list=groups[v].slice(), seen={}, ordered=[];
-    var n=qualityChoiceFor(v,false);
-    if(!n && active && active.vendor===v) n=active;
-    if(n && list.some(function(m){ return m.id===n.id; })){ ordered.push(n); seen[n.id]=1; }
-    var h=qualityChoiceFor(v,true)||((v===qualityVendor())?defaultQualityModel(true):null);
-    if(h && !seen[h.id] && list.some(function(m){ return m.id===h.id; })){ ordered.push(h); seen[h.id]=1; }
+    var pair=vendorQualityPair(v);
+    [pair.normal,pair.high].forEach(function(m){
+      if(m && !seen[m.id] && list.some(function(x){ return x.id===m.id; })){ ordered.push(m); seen[m.id]=1; }
+    });
     list.filter(function(m){ return !seen[m.id]; })
         .sort(function(a,b){ return String(a.modelName||"").localeCompare(String(b.modelName||""),"zh-Hant"); })
         .forEach(function(m){ ordered.push(m); });
@@ -2172,7 +2218,7 @@ function renderModels(){
             var ids=[m.id], pairedHigh=null;
             if(!isHigh){
               /* 刪一般畫質＝這個廠商那一組一起刪掉，不會留下孤零零的高畫質 */
-              pairedHigh=qualityChoiceFor(m.vendor, true);
+              pairedHigh=vendorQualityPair(m.vendor).high;
               if(pairedHigh && pairedHigh.id!==m.id) ids.push(pairedHigh.id);
             }
             state.models=state.models.filter(function(x){ return ids.indexOf(x.id)<0; });
@@ -2773,8 +2819,7 @@ async function generateWithActiveModel(images, prompt){
 function guardModel(){
   var m=activeModel();
   if(!m){
-    toast("還沒有可用的模型：先到「API模型」頁存一組。");
-    try{ $("secModels").scrollIntoView({behavior:"smooth"}); }catch(e){}
+    openNoModelModal();
     return null;
   }
   if(!modelCanTryOn(m)){
@@ -3489,6 +3534,8 @@ function syncModalInert(){
   var open=de.classList.contains("auth-pending")||de.classList.contains("lock-pending")
     ||$("authOverlay").classList.contains("show")
     ||$("lockOverlay").classList.contains("show")
+    ||($("copyModal")&&$("copyModal").classList.contains("show"))
+    ||($("noModelModal")&&$("noModelModal").classList.contains("show"))
     ||$("viewer").classList.contains("show");
   var wrap=document.querySelector(".wrap");
   if(wrap) wrap.toggleAttribute("inert", !!open);
@@ -3496,7 +3543,7 @@ function syncModalInert(){
 (function(){
   syncModalInert();
   var mo=new MutationObserver(syncModalInert);
-  ["authOverlay","lockOverlay","viewer"].forEach(function(id){
+  ["authOverlay","lockOverlay","copyModal","noModelModal","viewer"].forEach(function(id){
     var el=$(id); if(el) mo.observe(el,{attributes:true,attributeFilter:["class"]});
   });
   mo.observe(document.documentElement,{attributes:true,attributeFilter:["class"]});
@@ -3581,6 +3628,189 @@ async function loginAccount(email,pw){
   if(await hashPw(pw+"|"+acc.email)!==acc.pwHash) throw new Error("密碼不對，請再試一次。");
   return acc;
 }
+
+/* ============ 從其他帳號複製「我的衣櫥」與「API模型」 ============ */
+/* 新使用者不必從零開始：輸入對方帳密，把衣櫥（含照片）與模型（含金鑰）複製一份到自己帳號。
+   只有衣櫥與模型會被複製，照片庫、成品、多角度都不動，對方資料也不會被改。 */
+var copyPromptPending=false;
+async function decryptKeyWith(m, key){
+  if(m.keyEnc && key){
+    try{
+      var p=String(m.keyEnc).split(":");
+      var pt=await crypto.subtle.decrypt({name:"AES-GCM", iv:unb64(p[1])}, key, unb64(p[2]));
+      return new TextDecoder().decode(pt);
+    }catch(e){ return ""; }
+  }
+  return m.apiKey||"";
+}
+/* 只借對方的帳密查一次雲端，不動目前的登入狀態與 token */
+async function copyApiFetch(path, token, opts){
+  opts=opts||{};
+  var headers=Object.assign({},opts.headers||{});
+  if(token) headers["Authorization"]="Bearer "+token;
+  var body=opts.body;
+  if(opts.json!==undefined){ headers["Content-Type"]="application/json"; body=JSON.stringify(opts.json); }
+  var res;
+  try{ res=await fetch(syncBase()+path,{method:opts.method||"GET", headers:headers, body:body}); }
+  catch(e){ throw new Error("連不到同步伺服器："+(e.message||e)); }
+  var text=await res.text(), json=null;
+  try{ json=text?JSON.parse(text):null; }catch(e){}
+  if(!res.ok) throw new Error((json&&(json.error||json.message))||("伺服器回應 "+res.status));
+  return json||{};
+}
+async function copyBlobAsDataUrl(id, token){
+  try{
+    var res=await fetch(syncBase()+"/api/blob/wardrobe/"+id,{headers:{Authorization:"Bearer "+token}});
+    if(!res.ok) return "";
+    return await blobToDataUrl(await res.blob());
+  }catch(e){ return ""; }
+}
+async function copyFromOtherAccount(email, pw){
+  email=String(email||"").trim();
+  if(!email || email.indexOf("@")<0) throw new Error("請填對方的 Email。");
+  if(!pw) throw new Error("請填對方的密碼。");
+  var wardrobeSrc=[], modelSrc=[], srcQuality=null, srcActiveId=null;
+  var acc=loadAccounts().find(function(a){ return a.email.toLowerCase()===email.toLowerCase(); });
+  if(acc){
+    if(acc.id===state.userId) throw new Error("這是目前登入的帳號，不用複製。");
+    if(await hashPw(pw+"|"+acc.email)!==acc.pwHash) throw new Error("密碼不對，請再試一次。");
+    var srcKey=hasSubtle()?await deriveKek(pw, acc.salt):null;
+    var allW=await idbAll("wardrobe");
+    wardrobeSrc=allW.filter(function(x){ return x.owner===acc.id && !x.deletedAt; });
+    var sMods=rawModels().filter(function(m){ return m.owner===acc.id; });
+    for(var i=0;i<sMods.length;i++){
+      modelSrc.push(Object.assign({}, sMods[i], {_plain:await decryptKeyWith(sMods[i], srcKey)}));
+    }
+    var qm=readQualityMap()[acc.id]; if(qm) srcQuality=qm;
+    srcActiveId=localStorage.getItem(LS_ACTIVE+"."+acc.id);
+  }else{
+    if(!syncBase()) throw new Error("這台裝置沒有這個帳號，也沒有設定同步伺服器。請先請對方用這台裝置登入一次。");
+    var salt=await copyApiFetch("/api/salt?email="+encodeURIComponent(email),"");
+    if(!salt.exists) throw new Error("找不到這個帳號（這台裝置與雲端都沒有）。");
+    var authHash=await pbkdf2Hex(pw, salt.authSalt);
+    var login=await copyApiFetch("/api/login","",{method:"POST",json:{email:email,authHash:authHash}});
+    var srcKey2=await deriveKeyFromHexSalt(pw, login.encSalt);
+    var remote=await copyApiFetch("/api/sync", login.token);
+    var items=(remote&&remote.items)||[];
+    for(var j=0;j<items.length;j++){
+      var it=items[j];
+      if(it.deleted) continue;
+      if(it.kind==="wardrobe"){
+        var w=Object.assign({}, it.data||{}); delete w.hasImg;
+        if(it.data && it.data.hasImg) w.dataUrl=await copyBlobAsDataUrl(it.id, login.token);
+        w.id=it.id;
+        wardrobeSrc.push(w);
+      }
+      if(it.kind==="settings" && it.id==="models"){
+        ((it.data&&it.data.models)||[]).forEach(function(m){ modelSrc.push(Object.assign({}, m)); });
+      }
+    }
+    for(var k=0;k<modelSrc.length;k++){ modelSrc[k]._plain=await decryptKeyWith(modelSrc[k], srcKey2); }
+  }
+  if(!wardrobeSrc.length && !modelSrc.length) throw new Error("這個帳號沒有衣櫥或模型可以複製。");
+  if((state.wardrobe.length || state.models.length) &&
+     !confirm("你已經有 "+state.wardrobe.length+" 件衣服、"+state.models.length+" 組模型。要再複製一份嗎？")){
+    throw new Error("已取消。");
+  }
+  var nW=0, nM=0, idMap={}, activeNew=null;
+  for(var a=0;a<wardrobeSrc.length;a++){
+    var rec=Object.assign({}, wardrobeSrc[a]);
+    delete rec.hasImg;
+    rec.id=uid(); rec.owner=state.userId; rec.updatedAt=Date.now();
+    await idbPut("wardrobe", rec);
+    state.wardrobe.push(rec); nW++;
+  }
+  for(var b=0;b<modelSrc.length;b++){
+    var m=modelSrc[b];
+    var mr={ id:uid(), owner:state.userId, vendor:m.vendor, customVendor:m.customVendor||"",
+      modelId:m.modelId, modelName:m.modelName, endpoint:m.endpoint, accountId:m.accountId||"",
+      workerUrl:m.workerUrl||"", createdAt:Date.now() };
+    if(m._plain){ mr.apiKey=m._plain; if(sessionKey) mr.keyEnc=await encryptSecret(m._plain); }
+    state.models.push(mr); idMap[m.id]=mr.id;
+    if(srcActiveId && srcActiveId===m.id) activeNew=mr.id;
+    nM++;
+  }
+  if(srcQuality){
+    var map=readQualityMap(), dst=map[state.userId]||{};
+    if(srcQuality.normal && idMap[srcQuality.normal]) dst.normal=idMap[srcQuality.normal];
+    if(srcQuality.high && idMap[srcQuality.high]) dst.high=idMap[srcQuality.high];
+    dst.byVendor=dst.byVendor||{};
+    Object.keys(srcQuality.byVendor||{}).forEach(function(v){
+      var p=srcQuality.byVendor[v]||{}, np={};
+      if(p.normal && idMap[p.normal]) np.normal=idMap[p.normal];
+      if(p.high && idMap[p.high]) np.high=idMap[p.high];
+      if(np.normal||np.high) dst.byVendor[v]=np;
+    });
+    map[state.userId]=dst;
+    try{ localStorage.setItem(LS_QUALITY, JSON.stringify(map)); }catch(e){}
+  }
+  if(!state.activeModelId && nM) state.activeModelId=activeNew||state.models[state.models.length-nM].id;
+  saveModels();
+  state.wardrobe.sort(function(x,y){ return (y.createdAt||0)-(x.createdAt||0); });
+  renderWardrobe(); renderModels(); renderTryonSummary();
+  if(typeof renderQualityHint==="function") renderQualityHint();
+  if(syncToken) syncNow({silent:true});
+  return { wardrobe:nW, models:nM };
+}
+function openNoModelModal(){
+  $("noModelModal").classList.add("show");
+  setTimeout(function(){ try{ $("noModelGoBtn").focus(); }catch(e){} },50);
+}
+function closeNoModelModal(){
+  $("noModelModal").classList.remove("show");
+}
+$("noModelGoBtn").addEventListener("click", function(){
+  closeNoModelModal();
+  switchPage("models");
+  setModelSub(state.models.length?"list":"add");
+});
+$("noModelCloseBtn").addEventListener("click", closeNoModelModal);
+function openCopyModal(ask){
+  $("copyAsk").style.display=ask?"block":"none";
+  $("copyForm").style.display=ask?"none":"block";
+  $("copyMsg").textContent=""; $("copyErr").textContent="";
+  $("copyEmail").value=""; $("copyPw").value="";
+  $("copyModal").classList.add("show");
+  setTimeout(function(){ try{ (ask?$("copyYesBtn"):$("copyEmail")).focus(); }catch(e){} },50);
+}
+function closeCopyModal(){
+  $("copyModal").classList.remove("show");
+  $("copyPw").value="";
+}
+function maybePromptCopy(){
+  if(!copyPromptPending) return;
+  copyPromptPending=false;
+  if(state.wardrobe.length || state.models.length) return;
+  openCopyModal(true);
+}
+$("copyLoginBtn").addEventListener("click", function(){
+  copyPromptPending=true;
+  var h=$("copyLoginHint"); if(h) h.style.display="block";
+});
+$("copyFromBtn").addEventListener("click", function(){ openCopyModal(false); });
+$("copyNoBtn").addEventListener("click", closeCopyModal);
+$("copyCancelBtn").addEventListener("click", closeCopyModal);
+$("copyYesBtn").addEventListener("click", function(){
+  $("copyAsk").style.display="none"; $("copyForm").style.display="block";
+  try{ $("copyEmail").focus(); }catch(e){}
+});
+$("copyGoBtn").addEventListener("click", async function(){
+  var btn=this, old=btn.textContent;
+  btn.disabled=true; btn.textContent="複製中…";
+  $("copyErr").textContent=""; $("copyMsg").textContent="";
+  try{
+    var n=await copyFromOtherAccount($("copyEmail").value, $("copyPw").value);
+    $("copyPw").value="";
+    $("copyForm").style.display="none";
+    $("copyMsg").innerHTML="<span class='ok-text'>已複製 "+n.wardrobe+" 件衣服、"+n.models+" 組模型。</span>";
+    toast("已複製其他人的衣櫥與模型。");
+    setTimeout(closeCopyModal, 1600);
+  }catch(e){
+    $("copyErr").textContent=(e&&e.message)||String(e);
+  }finally{
+    btn.disabled=false; btn.textContent=old;
+  }
+});
 async function loadUserData(){
   loadSettings();
   try{
@@ -3619,6 +3849,7 @@ async function startUserSession(acc,pw){
   renderPhotos(); renderWardrobe(); renderResults(); renderAngleGroups(); renderModels();
   renderTryonSummary(); refreshPwSetup(); refreshLock();
   toast("已登入："+acc.email);
+  maybePromptCopy();
 }
 function logoutAccount(){
   stopAutoSync();
@@ -3692,7 +3923,7 @@ async function submitAuth(){
      否則沿用已存的設定，沒存過就用內建預設伺服器，不會把同步關掉。 */
   var syncEl=$("authSyncBase");
   if(syncEl){ var base=(syncEl.value||"").trim(); if(base!==syncBase()) setSyncBase(base); }
-  else if(!syncBase() && DEFAULT_SYNC_BASE){ setSyncBase(DEFAULT_SYNC_BASE); }
+  else if(!LOCAL_DIST && !syncBase() && DEFAULT_SYNC_BASE){ setSyncBase(DEFAULT_SYNC_BASE); }
   var register=(authMode==="register");
   if(register && pw!==$("authPw2").value){ authFail("兩次輸入的密碼不一樣。"); return; }
 
@@ -3722,10 +3953,12 @@ async function submitAuth(){
           throw e;
         }
       }
+      if(register) copyPromptPending=true;
       await startCloudSession(pw);
       try{ localStorage.setItem("tryonStatic.lastEmail.v1", email); }catch(e){}
     } else {
       var acc=register? await createAccount(email,pw) : await loginAccount(email,pw);
+      if(register) copyPromptPending=true;
       await startUserSession(acc,pw);
       try{ localStorage.setItem("tryonStatic.lastEmail.v1", email); }catch(e){}
     }
@@ -3760,12 +3993,14 @@ async function pullFromCloud(){
    有填的話：登入走雲端帳號、金鑰用密碼派生（伺服器只看到密文）、資料逐筆比對 updatedAt 做 last-write-wins，
    刪除用墓碑（tombstone）同步，照片走 R2。 */
 var LS_SYNC_BASE="tryonStatic.syncBase.v1", LS_TOMBS="tryonStatic.tombstones.v1", LS_MODELS_AT="tryonStatic.modelsAt.v1";
+/* 「下載這支程式」匯出的單一 HTML 會夾帶 window.__TRYON_LOCAL__，代表這是單機版：沒有雲端同步 */
+var LOCAL_DIST=!!window.__TRYON_LOCAL__;
 var SYNC_STORES=["photos","wardrobe","results","angleGroups"];
 var DEFAULT_SYNC_BASE="https://tryon-sync.neil518-tang.workers.dev";
 var syncToken=null, syncTimer=null, syncBusy=false, syncApplying=false;
 function syncBase(){ try{ return (localStorage.getItem(LS_SYNC_BASE)||"").replace(/\/+$/,""); }catch(e){ return ""; } }
 function setSyncBase(v){ try{ if(v) localStorage.setItem(LS_SYNC_BASE,String(v).replace(/\/+$/,"")); else localStorage.removeItem(LS_SYNC_BASE); }catch(e){} refreshSyncStatus(); }
-function syncEnabled(){ return !!syncBase(); }
+function syncEnabled(){ return !LOCAL_DIST && !!syncBase(); }
 function setSyncStatus(text,cls){ var el=$("syncStatus"); if(!el) return; el.className="kv"+(cls?" "+cls:""); el.textContent=text; }
 function refreshSyncStatus(){
   if(!syncEnabled()){ setSyncStatus("沒有設定同步伺服器（只用本機）"); return; }
@@ -4012,8 +4247,6 @@ function setupPages(){
   if(models && $("priceNote")) models.appendChild($("priceNote"));
   if(sets && $("secBackup")) sets.appendChild($("secBackup"));
   if(sets && $("secTrash")) sets.appendChild($("secTrash"));
-  var notice3=$("exportBtn")?$("exportBtn").closest(".notice"):null;
-  if(sets && notice3) sets.appendChild(notice3);
   if(sets && $("rescueBanner")) sets.appendChild($("rescueBanner"));
   if(sets){
     var ver=document.createElement("p"); ver.className="verline"; ver.textContent="虛擬試穿 V2・2026-11-25";
@@ -4558,6 +4791,7 @@ async function startCloudSession(pw){
   $("authPw").value=""; $("authPw2").value=""; $("authErr").textContent="";
   renderAll(); refreshSyncStatus(); startAutoSync(); renderDataLine();
   toast("已登入並同步："+state.accountEmail+(moved?("（已把這台裝置原本的 "+moved+" 筆資料搬進雲端帳號）"):""));
+  maybePromptCopy();
   hintOrphanData();
   if(!moved && !state.models.length && !state.wardrobe.length){
     toast("雲端與這台裝置都還沒有資料。若你先前在別台裝置用過，請到那台用同一個帳號登入，按「設定」頁「立即同步」把資料傳上來。");
@@ -4834,19 +5068,44 @@ $("suGoBtn").addEventListener("click", async function(){
 });
 
 /* ============ 匯出單一 HTML ============ */
+/* 匯出的單一 HTML 在 </head> 前夾一個旗標，開起來就知道自己是被下載的單機版 */
+function localDistHtml(html){
+  if(!html) return html;
+  /* 不能靠「檔案裡有沒有 __TRYON_LOCAL__」判斷，因為程式碼本身的字串就有；
+     一律插在第一個 </head> 前面（單機版不會再顯示下載按鈕，不會重複匯出） */
+  var flag="<script>window.__TRYON_LOCAL__=true;<\/script>\n</head>";
+  return html.replace("</head>", flag);
+}
+/* 單機版：設定頁只留備份與垃圾桶；雲端同步的按鈕、狀態與說明全部收起來 */
+function applyLocalModeUI(){
+  if(!LOCAL_DIST) return;
+  var row=$("syncNowBtn")?$("syncNowBtn").parentElement:null;
+  if(row) row.style.display="none";
+  if($("dataLine")) $("dataLine").style.display="none";
+  if($("suSyncHint")) $("suSyncHint").style.display="none";
+  if($("exportBtn")) $("exportBtn").style.display="none";
+  if($("exportNote")) $("exportNote").style.display="none";
+  if($("authCloudNote")) $("authCloudNote").innerHTML="這是單機版：資料只存在這台裝置的瀏覽器裡，<strong>沒有雲端同步功能</strong>。要換裝置請用「設定」頁的匯出／匯入備份檔自行搬移。";
+  /* 設定頁的副標與垃圾桶說明也不要提到同步／雲端 */
+  var psub=document.querySelector("#page-settings .page-head .psub");
+  if(psub) psub.textContent="帳號、備份與垃圾桶。";
+  var th=document.querySelector("#secTrash .sec-head .hint");
+  if(th) th.textContent="刪掉的東西先來這裡，30 天內可以還原；「永久刪除」會直接刪掉。超過 30 天會自動清空。";
+}
 $("exportBtn").addEventListener("click", function(){
   /* 用開頁時留下的乾淨快照，而不是即時 DOM：即時 DOM 裡的縮圖是 data URL，
      序列化出去等於把使用者的照片與模型設定一起打包送人。 */
-  var html=PRISTINE_HTML||("<!doctype html>\n"+document.documentElement.outerHTML);
+  var html=localDistHtml(PRISTINE_HTML||("<!doctype html>\n"+document.documentElement.outerHTML));
   var blob=new Blob([html],{type:"text/html;charset=utf-8"});
   var a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download="index.html"; a.click();
   setTimeout(function(){ URL.revokeObjectURL(a.href); },2000);
-  toast("已下載乾淨的單一 HTML 檔（index.html），放到任何靜態空間就能用。");
+  toast("已下載單機版（index.html）：不需要後端，直接開就能用，沒有雲端同步功能。");
 });
 
 /* ============ 啟動 ============ */
 (async function init(){
   setupPages();
+  applyLocalModeUI();
   bindNav();
   setBaseSub("photos");
   loadModelCache();
