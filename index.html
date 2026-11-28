@@ -744,7 +744,7 @@ section.block > :first-child{margin-top:0}
       <button class="btn danger" id="photoDeleteBtn">刪除目前這張</button>
     </div>
     </div><div class="base-lib">
-    <p class="kv" style="margin:0 0 8px">照片庫 <span id="photoCount">0</span> 張（可多選上傳，每張可逐張刪除；右上角可標記 4 視角）</p>
+    <p class="kv" style="margin:0 0 8px">照片庫 <span id="photoCount">0</span> 張（可多選上傳，每張可逐張刪除；偵測到多角度拼圖會自動標記 4 視角）</p>
     <div class="grid photos" id="photoGrid"></div>
     </div></div>
   </section>
@@ -1973,11 +1973,60 @@ function renderModels(){
 var PRISTINE_HTML="<!doctype html>\n"+document.documentElement.outerHTML;
 /* ============ 人物照片 ============ */
 function selectedPhoto(){ return state.photos.find(function(p){return p.id===state.selectedPhotoId;})||null; }
+function loadImgEl(url){
+  return new Promise(function(res,rej){ var i=new Image(); i.onload=function(){res(i);}; i.onerror=function(){rej(new Error("img"));}; i.src=url; });
+}
+/* 判斷照片是不是「多角度拼圖」（例如 2×2 的四視角合成圖）：
+   掃出接近白色、貫穿整張圖的細分隔線；只有在畫面中間附近同時出現垂直與水平分隔線才算。
+   單人照（即使背景是白牆）中間不會有兩條貫穿的細白線。 */
+async function detectMultiView(dataUrl){
+  try{
+    var img=await loadImgEl(dataUrl);
+    var W=240, H=Math.round(img.height*W/img.width)||240;
+    if(H>360){ H=360; W=Math.round(img.width*H/img.height); }
+    var c=document.createElement("canvas"); c.width=W; c.height=H;
+    var x=c.getContext("2d"); x.drawImage(img,0,0,W,H);
+    var d=x.getImageData(0,0,W,H).data;
+    function light(i){ var r=d[i],g=d[i+1],b=d[i+2]; return Math.min(r,g,b)>=226 && (Math.max(r,g,b)-Math.min(r,g,b))<=16; }
+    function colRatio(cx){ var n=0; for(var y=0;y<H;y++){ if(light((y*W+cx)*4)) n++; } return n/H; }
+    function rowRatio(ry){ var n=0; for(var cx=0;cx<W;cx++){ if(light((ry*W+cx)*4)) n++; } return n/W; }
+    function runs(fn,len){
+      var out=[],start=-1,i,on;
+      for(i=0;i<len;i++){
+        on=fn(i)>=0.9;
+        if(on && start<0) start=i;
+        if(!on && start>=0){ out.push([start,i-1]); start=-1; }
+      }
+      if(start>=0) out.push([start,len-1]);
+      return out.filter(function(r){ var wdt=r[1]-r[0]+1; return wdt>=2 && wdt<=Math.max(6,Math.round(len*0.12)) && r[0]>1 && r[1]<len-2; });
+    }
+    function nearMid(rs,len){ return rs.some(function(r){ var mid=(r[0]+r[1])/2/len; return mid>=0.35 && mid<=0.65; }); }
+    return nearMid(runs(colRatio,W),W) && nearMid(runs(rowRatio,H),H);
+  }catch(e){ return false; }
+}
+var mvScanBusy=false;
+async function scanMultiViewFlags(){
+  if(mvScanBusy) return;
+  mvScanBusy=true;
+  var changed=false;
+  try{
+    for(var i=0;i<state.photos.length;i++){
+      var p=state.photos[i];
+      if(p.mvChecked) continue;
+      var hit=false;
+      try{ hit=await detectMultiView(p.dataUrl); }catch(e){ }
+      p.mvDetected=hit; p.mvChecked=true; p.multiView=hit;
+      try{ await idbPut("photos",p,{internal:true}); }catch(e){ }
+      changed=true;
+    }
+  } finally { mvScanBusy=false; }
+  if(changed){ renderPhotos(); renderTryonSummary(); }
+}
 function renderPhotos(){
   $("photoCount").textContent=state.photos.length;
   var box=$("mainPhotoBox"), sel=selectedPhoto();
   if(sel){ box.innerHTML=""; var img=document.createElement("img"); img.src=sel.dataUrl; img.alt="目前選定的全身照"; box.appendChild(img); }
-  else box.innerHTML="<span class='kv'>還沒有選照片，先從下面上傳一張全身照。</span>";
+  else box.innerHTML="<span class='kv'>"+(state.photos.length?"點下面任何一張照片，大圖就會顯示在這裡。":"還沒有照片，先從下面上傳一張全身照。")+"</span>";
   var g=$("photoGrid"); g.innerHTML="";
   state.photos.forEach(function(p){
     var wrap=document.createElement("div"); wrap.style.position="relative";
@@ -1996,15 +2045,16 @@ function renderPhotos(){
     var mv=document.createElement("button"); mv.type="button";
     mv.textContent=p.multiView?"✓ 4視角":"4視角";
     mv.title="標記為「4 角度合一」的全身多視角圖（試穿時 4 個角度都會換上衣服）";
-    mv.style.cssText="position:absolute;top:4px;right:36px;font-size:.72rem;padding:2px 8px;border-radius:999px;border:1px solid var(--line);background:"+(p.multiView?"var(--accent)":"var(--surface)")+";color:"+(p.multiView?"var(--accent-ink)":"var(--ink2)")+";z-index:2;cursor:pointer";
+    mv.style.cssText="position:absolute;bottom:4px;left:4px;font-size:.72rem;padding:2px 8px;border-radius:999px;border:1px solid var(--line);background:"+(p.multiView?"var(--accent)":"var(--surface)")+";color:"+(p.multiView?"var(--accent-ink)":"var(--ink2)")+";z-index:2;cursor:pointer";
     mv.addEventListener("click", function(e){
       e.stopPropagation();
       p.multiView=!p.multiView;
       idbPut("photos",p,{internal:true});
       renderPhotos(); renderTryonSummary();
     });
-    wrap.appendChild(b); wrap.appendChild(del); wrap.appendChild(mv); g.appendChild(wrap);
+    wrap.appendChild(b); wrap.appendChild(del); if(p.mvDetected) wrap.appendChild(mv); g.appendChild(wrap);
   });
+  if(state.photos.some(function(p){ return !p.mvChecked; })) setTimeout(scanMultiViewFlags,0);
 }
 $("photoUpload").addEventListener("change", async function(){
   var files=Array.prototype.slice.call(this.files||[]); this.value="";
@@ -2012,6 +2062,7 @@ $("photoUpload").addEventListener("change", async function(){
     try{
       var d=await fileToDataUrl(files[i],1600);
       var rec={id:uid(), dataUrl:d, createdAt:Date.now(), fp:await dataUrlFingerprint(d)};
+      rec.mvDetected=await detectMultiView(d); rec.mvChecked=true; rec.multiView=rec.mvDetected;
       await idbPut("photos",rec); state.photos.push(rec); state.selectedPhotoId=rec.id; state.activeAngleGroupId=null;
     }catch(e){ toast("有一張照片讀不到，已跳過。"); }
   }
@@ -3275,7 +3326,8 @@ async function loadUserData(){
     await purgeOldTrash();
   }catch(e){ toast("本地資料庫開啟失敗，這個瀏覽器可能不支援 IndexedDB。"); }
   state.selectedWardrobe={}; state.activeAngleGroupId=null;
-  state.selectedPhotoId=state.photos.length?state.photos[state.photos.length-1].id:null;
+  /* 進頁面不要自動帶最後一張：使用者點哪一張，左邊才顯示哪一張 */
+  state.selectedPhotoId=null;
 }
 async function startUserSession(acc,pw){
   state.userId=acc.id; state.accountEmail=acc.email; state.unlocked=true;
